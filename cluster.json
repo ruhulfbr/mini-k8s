@@ -1,0 +1,16 @@
+{
+  "services": [
+    {
+      "service_name": "web",
+      "image": "nginx:latest",
+      "replicas": 3,
+      "port": 80
+    },
+    {
+      "service_name": "api",
+      "image": "nginx:latest",
+      "replicas": 2,
+      "port": 8081
+    }
+  ]
+}
