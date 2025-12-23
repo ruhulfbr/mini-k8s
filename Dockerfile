@@ -1,7 +1,7 @@
 FROM golang:1.25.1-alpine3.21 AS builder
 
-# Install git and ca-certificates (needed for go get if any)
-RUN apk update && apk add --no-cache git
+# Install git, docker and ca-certificates (needed for go get if any)
+RUN apk update && apk add --no-cache git docker
 
 # Set working directory
 WORKDIR /app
@@ -20,4 +20,12 @@ COPY . .
 VOLUME ["/app/data"]
 
 # Proper CompileDaemon command
-CMD ["sh", "-c", "go build -o main . && ./main"]
+CMD ["sh", "-c", "\
+    CompileDaemon \
+      -log-prefix=false \
+      -color=true \
+      -exclude-dir=./.git \
+      -exclude-dir=./data/bades \
+      -build=\"go build -o main ./cmd\" \
+      -command=\"./main\" \
+"]

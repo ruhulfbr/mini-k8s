@@ -48,8 +48,10 @@ func main() {
 	apiServer := api.NewServer(ctrl)
 
 	go func() {
-		log.Println("[API] listening on :9000")
-		if err := apiServer.Start(":9000"); err != nil {
+		apiPort := os.Getenv("API_PORT")
+
+		log.Println("[API] listening on :", apiPort)
+		if err := apiServer.Start(":" + apiPort); err != nil {
 			log.Fatal(err)
 		}
 	}()
@@ -96,12 +98,12 @@ func startWorker(ds *orchestrator.Datastore) {
 
 func startLoadBalancer(ds *orchestrator.Datastore) {
 	go func() {
-		port := os.Getenv("PORT")
+		port := os.Getenv("LOAD_BALANCER_PORT")
 		log.Println("[LoadBalancer] listening on :", port)
 
 		lb := loadbalancer.NewLoadBalancer(ds)
-		
-		lb.Serve(os.Getenv("PORT"))
+
+		lb.Serve(port)
 	}()
 }
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"time"
 
 	"github.com/hibiken/asynq"
@@ -88,7 +89,7 @@ func handleDeploy(ds *orchestrator.Datastore) asynq.HandlerFunc {
 		io.Copy(io.Discard, reader)
 		reader.Close()
 
-		containerName := fmt.Sprintf("mk-%s", payload.ID)
+		containerName := generateContainerName(payload.ID)
 
 		resp, err := cli.ContainerCreate(ctx, client.ContainerCreateOptions{
 			Config: &container.Config{
@@ -161,14 +162,20 @@ func handleTerminate(ds *orchestrator.Datastore) asynq.HandlerFunc {
 		}
 		defer cli.Close()
 
-		containerName := fmt.Sprintf("mk-%s", payload.ID)
+		containerName := generateContainerName(payload.ID)
 
-		_, err = cli.ContainerRemove(ctx, payload.ID, client.ContainerRemoveOptions{Force: true, RemoveVolumes: true})
+		_, err = cli.ContainerRemove(ctx, containerName, client.ContainerRemoveOptions{Force: true, RemoveVolumes: true})
 
 		if err != nil {
 			log.Printf("failed to remove container %s: %v", containerName, err)
+
+			return err
 		}
 
 		return ds.DeletePod(ctx, payload.Service, payload.ID)
 	}
+}
+
+func generateContainerName(id string) string {
+	return fmt.Sprintf("%s-%s", os.Getenv("CONTAINER_NAME_PREFIX"), id)
 }

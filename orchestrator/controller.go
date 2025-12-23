@@ -22,6 +22,18 @@ type ScaleRequest struct {
 	Port        int    `json:"port"`
 }
 
+type DeployPayload struct {
+	ID      string `json:"id"`
+	Service string `json:"service"`
+	Image   string `json:"image"`
+	Port    int    `json:"port"`
+}
+
+type TerminatePayload struct {
+	ID      string `json:"id"`
+	Service string `json:"service"`
+}
+
 func NewController(ds *Datastore, client *asynq.Client) *Controller {
 	return &Controller{ds: ds, queue: client}
 }

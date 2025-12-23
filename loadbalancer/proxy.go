@@ -2,6 +2,7 @@ package loadbalancer
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -47,6 +48,8 @@ func (lb *LoadBalancer) Serve(port string) {
 			Scheme: "http",
 			Host:   runningPods[idx].IP + ":" + strconv.Itoa(runningPods[idx].Port),
 		}
+
+		fmt.Println("Load balancer target to : ", target.String())
 
 		proxy := httputil.NewSingleHostReverseProxy(target)
 		proxy.ServeHTTP(w, r)
