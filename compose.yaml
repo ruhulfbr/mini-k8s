@@ -1,0 +1,32 @@
+version: "3.9"
+services:
+  mini-k8s-controller:
+    container_name: mini-k8s-controller
+    build: .
+    ports:
+      - ${EXPOSE_PORT}:${PORT}
+    restart: on-failure
+    volumes:
+      - ./:/app/
+      - ./data:/app/data # BadgerDB Data Source
+    depends_on:
+      - mini-k8s-redis
+    env_file:
+      - .env
+    environment:
+      - REDIS_HOST=mini-k8s-redis:${REDIS_PORT}
+    networks:
+      - mini-k8s-network
+
+  mini-k8s-redis:
+    image: redis:7
+    container_name: mini-k8s-redis
+    ports:
+      - ${REDIS_EXPOSE_PORT}:${REDIS_PORT}
+    command: redis-server --appendonly yes
+    networks:
+      - mini-k8s-network
+
+networks:
+  mini-k8s-network:
+    driver: bridge

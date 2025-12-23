@@ -6,6 +6,7 @@ require (
 	github.com/dgraph-io/badger/v3 v3.2103.5
 	github.com/google/uuid v1.6.0
 	github.com/hibiken/asynq v0.25.1
+	github.com/joho/godotenv v1.5.1
 	github.com/moby/moby/api v1.52.0
 	github.com/moby/moby/client v0.2.1
 )

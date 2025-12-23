@@ -8,23 +8,30 @@ import (
 	"time"
 
 	"github.com/hibiken/asynq"
+	"github.com/joho/godotenv"
 	"github.com/ruhulfbr/mini-k8s/loadbalancer"
 	"github.com/ruhulfbr/mini-k8s/orchestrator"
 	"github.com/ruhulfbr/mini-k8s/worker"
 )
 
 func main() {
+
+	// --------- Load ENV -----------
+	err := godotenv.Load()
+	if err != nil {
+		log.Println("Error loading .env file")
+	}
+
 	// ----------------- Initialize Datastore -----------------
-	ds := orchestrator.NewDatastore("badger")
+	ds := orchestrator.NewDatastore(os.Getenv("BADGER_DATA_SOURCE"))
 	defer ds.Close()
 
 	// ----------------- Load cluster configuration -----------------
 	cfg := orchestrator.LoadConfig("cluster.json")
 
 	// ----------------- Redis / Asynq setup -----------------
-	redisAddr := "localhost:6379"
+	redisAddr := os.Getenv("REDIS_HOST")
 
-	// Asynq client (used by scheduler/controller to enqueue tasks)
 	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: redisAddr})
 	defer asynqClient.Close()
 
@@ -45,9 +52,9 @@ func main() {
 	// ----------------- Start Load Balancer -----------------
 	lb := loadbalancer.NewLoadBalancer(ds)
 	go func() {
-		log.Println("[LoadBalancer] listening on :8080")
+		log.Println("[LoadBalancer] listening on :", os.Getenv("PORT"))
 
-		lb.Serve("8080")
+		lb.Serve(os.Getenv("PORT"))
 	}()
 
 	// ----------------- Graceful shutdown -----------------
