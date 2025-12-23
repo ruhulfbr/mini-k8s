@@ -35,7 +35,7 @@ func NewScheduler(ds *Datastore, q *asynq.Client) *Scheduler {
 }
 
 func (s *Scheduler) Schedule(ctx context.Context, svc ServiceConfig) {
-	pods, err := s.ds.ListPods(ctx, svc.ServiceName)
+	pods, err := s.ds.ListPodsByService(ctx, svc.ServiceName)
 	if err != nil {
 		log.Printf("scheduler: failed to list pods: %v", err)
 		return

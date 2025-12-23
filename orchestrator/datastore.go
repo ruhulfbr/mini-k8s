@@ -8,15 +8,6 @@ import (
 	"github.com/dgraph-io/badger/v3"
 )
 
-//type Pod struct {
-//	ID      string `json:"id"`
-//	Service string `json:"service"`
-//	Status  string `json:"status"` // Pending | Running
-//	IP      string `json:"ip"`
-//	Image   string `json:"image"`
-//	Port    int    `json:"port"`
-//}
-
 type Datastore struct {
 	db *badger.DB
 }
@@ -63,7 +54,7 @@ func (d *Datastore) GetPod(ctx context.Context, id string) (*Pod, error) {
 	return &pod, nil
 }
 
-func (d *Datastore) ListPods(ctx context.Context, service string) ([]Pod, error) {
+func (d *Datastore) ListPodsByService(ctx context.Context, service string) ([]Pod, error) {
 	var pods []Pod
 
 	prefix := []byte("pods/")

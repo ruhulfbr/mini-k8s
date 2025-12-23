@@ -25,7 +25,7 @@ func NewLoadBalancer(ds *orchestrator.Datastore) *LoadBalancer {
 
 func (lb *LoadBalancer) Serve(port string) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
-		pods, err := lb.ds.ListPods(context.Background(), "")
+		pods, err := lb.ds.ListPodsByService(context.Background(), "")
 		if err != nil || len(pods) == 0 {
 			http.Error(w, "no pods available", http.StatusServiceUnavailable)
 			return

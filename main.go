@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"log"
 	"os"
 	"os/signal"
@@ -9,62 +8,105 @@ import (
 
 	"github.com/hibiken/asynq"
 	"github.com/joho/godotenv"
+
+	"github.com/ruhulfbr/mini-k8s/api"
 	"github.com/ruhulfbr/mini-k8s/loadbalancer"
 	"github.com/ruhulfbr/mini-k8s/orchestrator"
 	"github.com/ruhulfbr/mini-k8s/worker"
 )
 
 func main() {
+	// ----------------------------------------------------
+	// Load Environment Variables
+	// ----------------------------------------------------
+	loadEnv()
 
-	// --------- Load ENV -----------
-	err := godotenv.Load()
-	if err != nil {
-		log.Println("Error loading .env file")
-	}
-
-	// ----------------- Initialize Datastore -----------------
-	ds := orchestrator.NewDatastore(os.Getenv("BADGER_DATA_SOURCE"))
+	// ----------------------------------------------------
+	// Initialize Core Dependencies
+	// ----------------------------------------------------
+	ds := initDatastore()
 	defer ds.Close()
 
-	// ----------------- Load cluster configuration -----------------
-	cfg := orchestrator.LoadConfig("cluster.json")
-
-	// ----------------- Redis / Asynq setup -----------------
-	redisAddr := os.Getenv("REDIS_HOST")
-
-	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: redisAddr})
+	asynqClient := initAsynqClient()
 	defer asynqClient.Close()
 
-	// ----------------- Start Worker -----------------
+	// ----------------------------------------------------
+	// Load Cluster Configuration
+	// ----------------------------------------------------
+	orchestrator.LoadConfig("cluster.json")
+
+	// ----------------------------------------------------
+	// Start Background Services
+	// ----------------------------------------------------
+	startWorker(ds)
+	startLoadBalancer(ds)
+
+	// ----------------------------------------------------
+	// Start API Server
+	// ----------------------------------------------------
+	ctrl := orchestrator.NewController(ds, asynqClient)
+	apiServer := api.NewServer(ctrl)
+
+	go func() {
+		log.Println("[API] listening on :9000")
+		if err := apiServer.Start(":9000"); err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	// ----------------------------------------------------
+	// Graceful Shutdown
+	// ----------------------------------------------------
+	waitForShutdown()
+
+	log.Println("[Main] shutting down MiniKube-Go...")
+	time.Sleep(2 * time.Second)
+}
+
+/* ======================================================
+   Helper Functions
+====================================================== */
+
+func loadEnv() {
+	if err := godotenv.Load(); err != nil {
+		log.Println("[ENV] .env file not found, using system env")
+	}
+}
+
+func initDatastore() *orchestrator.Datastore {
+	ds := orchestrator.NewDatastore(os.Getenv("BADGER_DATA_SOURCE"))
+	log.Println("[Datastore] initialized")
+
+	return ds
+}
+
+func initAsynqClient() *asynq.Client {
+	redisAddr := os.Getenv("REDIS_HOST")
+	client := asynq.NewClient(asynq.RedisClientOpt{Addr: redisAddr})
+	log.Println("[Asynq] client connected:", redisAddr)
+	return client
+}
+
+func startWorker(ds *orchestrator.Datastore) {
 	go func() {
 		log.Println("[Worker] starting...")
-		worker.StartWorker(ds, redisAddr)
+		worker.StartWorker(ds, os.Getenv("REDIS_HOST"))
 	}()
+}
 
-	// ----------------- Start Controller / Scheduler -----------------
-	ctrl := orchestrator.NewController(cfg, orchestrator.NewScheduler(ds, asynqClient))
-	ctx, cancel := context.WithCancel(context.Background())
+func startLoadBalancer(ds *orchestrator.Datastore) {
 	go func() {
-		log.Println("[Controller] starting reconciliation loop...")
-		ctrl.Run(ctx)
-	}()
+		port := os.Getenv("PORT")
+		log.Println("[LoadBalancer] listening on :", port)
 
-	// ----------------- Start Load Balancer -----------------
-	lb := loadbalancer.NewLoadBalancer(ds)
-	go func() {
-		log.Println("[LoadBalancer] listening on :", os.Getenv("PORT"))
-
+		lb := loadbalancer.NewLoadBalancer(ds)
+		
 		lb.Serve(os.Getenv("PORT"))
 	}()
+}
 
-	// ----------------- Graceful shutdown -----------------
+func waitForShutdown() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt)
 	<-stop
-
-	log.Println("[Main] shutting down MiniKube-Go...")
-	cancel()
-
-	// Give goroutines a moment to exit cleanly
-	time.Sleep(2 * time.Second)
 }
