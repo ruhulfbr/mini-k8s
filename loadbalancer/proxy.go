@@ -24,9 +24,27 @@ func NewLoadBalancer(ds *orchestrator.Datastore) *LoadBalancer {
 	return &LoadBalancer{ds: ds, interval: 5 * time.Second}
 }
 
-func (lb *LoadBalancer) Serve(port string) {
+func (lb *LoadBalancer) Serve() {
+
+	nodes, err := lb.ds.ListPodsGroupedByService(context.Background())
+
+	if err != nil || len(nodes) == 0 {
+		log.Println("No Nodes available to run")
+		return
+	}
+
+	for serviceName, pods := range nodes {
+		log.Printf("Service: %s\n", serviceName)
+
+		for _, pod := range pods {
+			go lb.runForNodes(pod)
+		}
+	}
+}
+
+func (lb *LoadBalancer) runForNodes(pod orchestrator.Pod) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
-		pods, err := lb.ds.ListPodsByService(context.Background(), "")
+		pods, err := lb.ds.ListPodsByService(context.Background(), pod.Service)
 		if err != nil || len(pods) == 0 {
 			http.Error(w, "no pods available", http.StatusServiceUnavailable)
 			return
@@ -38,6 +56,7 @@ func (lb *LoadBalancer) Serve(port string) {
 				runningPods = append(runningPods, pod)
 			}
 		}
+
 		if len(runningPods) == 0 {
 			http.Error(w, "no running pods", http.StatusServiceUnavailable)
 			return
@@ -56,9 +75,10 @@ func (lb *LoadBalancer) Serve(port string) {
 	}
 
 	server := &http.Server{
-		Addr:    ":" + port,
+		Addr:    fmt.Sprintf(":%d", pod.Port),
 		Handler: http.HandlerFunc(handler),
 	}
-	log.Printf("Load balancer listening on port %s", port)
+
+	log.Printf("Load balancer listening on port %d", pod.Port)
 	log.Fatal(server.ListenAndServe())
 }

@@ -8,11 +8,13 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
+	"github.com/ruhulfbr/mini-k8s/loadbalancer"
 )
 
 type Controller struct {
 	ds    *Datastore
 	queue *asynq.Client
+	lbMgr *loadbalancer.Manager
 }
 
 type ScaleRequest struct {
@@ -34,8 +36,37 @@ type TerminatePayload struct {
 	Service string `json:"service"`
 }
 
-func NewController(ds *Datastore, client *asynq.Client) *Controller {
-	return &Controller{ds: ds, queue: client}
+func NewController(
+	ds *Datastore,
+	client *asynq.Client,
+	lbMgr *loadbalancer.Manager,
+) *Controller {
+	return &Controller{
+		ds:    ds,
+		queue: client,
+		lbMgr: lbMgr,
+	}
+}
+
+func (c *Controller) CreateNode(ctx context.Context, req ScaleRequest) error {
+	pods, err := c.ds.ListPodsByService(ctx, req.ServiceName)
+	if err != nil {
+		log.Printf("scheduler: failed to list Node: %v", err)
+		return err
+	}
+
+	if len(pods) > 0 {
+		log.Printf("scheduler: Node already exists")
+		return nil
+	}
+
+	err = c.scaleUp(ctx, req, req.Replicas)
+	if err != nil {
+		log.Printf("Something went wrong while creating node: %v", err)
+		return err
+	}
+
+	return nil
 }
 
 func (c *Controller) Scale(ctx context.Context, req ScaleRequest) error {

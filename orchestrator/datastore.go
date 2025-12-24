@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"strings"
 
 	"github.com/dgraph-io/badger/v3"
 )
@@ -85,8 +86,100 @@ func (d *Datastore) ListPodsByService(ctx context.Context, service string) ([]Po
 	return pods, err
 }
 
+func (d *Datastore) ListRunningPods(ctx context.Context, service string) ([]Pod, error) {
+	var pods []Pod
+
+	prefix := []byte("pods/")
+	if service != "" {
+		prefix = []byte("pods/" + service + "/")
+	}
+
+	err := d.db.View(func(txn *badger.Txn) error {
+		it := txn.NewIterator(badger.DefaultIteratorOptions)
+		defer it.Close()
+
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+			item := it.Item()
+			err := item.Value(func(val []byte) error {
+				var pod Pod
+				if err := json.Unmarshal(val, &pod); err != nil {
+					return err
+				}
+
+				if pod.Status == PodRunning {
+					pods = append(pods, pod)
+				}
+
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+
+	return pods, err
+}
+
+func (d *Datastore) ListPodsGroupedByService(ctx context.Context) (map[string][]Pod, error) {
+	podsByService := make(map[string][]Pod)
+
+	prefix := []byte("pods/")
+
+	err := d.db.View(func(txn *badger.Txn) error {
+		it := txn.NewIterator(badger.DefaultIteratorOptions)
+		defer it.Close()
+
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+			item := it.Item()
+
+			key := string(item.Key())
+			parts := strings.Split(key, "/")
+			if len(parts) < 3 {
+				continue
+			}
+
+			service := parts[1]
+
+			err := item.Value(func(val []byte) error {
+				var pod Pod
+				if err := json.Unmarshal(val, &pod); err != nil {
+					return err
+				}
+
+				podsByService[service] = append(podsByService[service], pod)
+				return nil
+			})
+
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+
+	return podsByService, err
+}
+
 func (d *Datastore) DeletePod(ctx context.Context, service, id string) error {
 	return d.db.Update(func(txn *badger.Txn) error {
 		return txn.Delete([]byte(PodKey(service, id)))
+	})
+}
+
+func (d *Datastore) DeleteAllPods(ctx context.Context) error {
+	prefix := []byte("pods/")
+
+	return d.db.Update(func(txn *badger.Txn) error {
+		it := txn.NewIterator(badger.DefaultIteratorOptions)
+		defer it.Close()
+
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+			if err := txn.Delete(it.Item().Key()); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 }

@@ -44,7 +44,8 @@ func main() {
 	// ----------------------------------------------------
 	// Start API Server
 	// ----------------------------------------------------
-	ctrl := orchestrator.NewController(ds, asynqClient)
+	lbMgr := loadbalancer.NewManager(ds)
+	ctrl := orchestrator.NewController(ds, asynqClient, lbMgr)
 	apiServer := api.NewServer(ctrl)
 
 	go func() {
@@ -98,12 +99,8 @@ func startWorker(ds *orchestrator.Datastore) {
 
 func startLoadBalancer(ds *orchestrator.Datastore) {
 	go func() {
-		port := os.Getenv("LOAD_BALANCER_PORT")
-		log.Println("[LoadBalancer] listening on :", port)
-
 		lb := loadbalancer.NewLoadBalancer(ds)
-
-		lb.Serve(port)
+		lb.Serve()
 	}()
 }
 
