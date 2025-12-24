@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"os"
+	"os/exec"
 	"time"
 
 	"github.com/hibiken/asynq"
@@ -80,20 +80,26 @@ func handleDeploy(ds *orchestrator.Datastore) asynq.HandlerFunc {
 		}
 		defer cli.Close()
 
-		// Pull image
-		reader, err := cli.ImagePull(ctx, payload.Image, client.ImagePullOptions{})
+		//// Pull image
+		//reader, err := cli.ImagePull(ctx, payload.Image, client.ImagePullOptions{})
+		//if err != nil {
+		//	fmt.Println("Image Pull error on deploy worker:", err)
+		//	return err
+		//}
+		//io.Copy(io.Discard, reader)
+		//reader.Close()
+
+		imageTag, err := buildImageFromDockerFile(ctx, payload)
 		if err != nil {
-			fmt.Println("Image Pull error on deploy worker:", err)
+			fmt.Println("Failed to build image on deploy worker:", err)
 			return err
 		}
-		io.Copy(io.Discard, reader)
-		reader.Close()
 
-		containerName := generateContainerName(payload.ID)
+		containerName := generateContainerName(payload.ID, payload.Service)
 
 		resp, err := cli.ContainerCreate(ctx, client.ContainerCreateOptions{
 			Config: &container.Config{
-				Image: payload.Image,
+				Image: imageTag,
 			},
 			HostConfig: &container.HostConfig{
 				NetworkMode: "bridge",
@@ -162,7 +168,7 @@ func handleTerminate(ds *orchestrator.Datastore) asynq.HandlerFunc {
 		}
 		defer cli.Close()
 
-		containerName := generateContainerName(payload.ID)
+		containerName := generateContainerName(payload.ID, payload.Service)
 
 		_, err = cli.ContainerRemove(ctx, containerName, client.ContainerRemoveOptions{Force: true, RemoveVolumes: true})
 
@@ -176,6 +182,38 @@ func handleTerminate(ds *orchestrator.Datastore) asynq.HandlerFunc {
 	}
 }
 
-func generateContainerName(id string) string {
-	return fmt.Sprintf("%s-%s", os.Getenv("CONTAINER_NAME_PREFIX"), id)
+func buildImageFromDockerFile(ctx context.Context, payload DeployPayload) (string, error) {
+	imageTag := generateImageTag(payload.Service)
+
+	buildContext := "./clusters/" + payload.Service
+
+	cmd := exec.CommandContext(
+		ctx,
+		"docker",
+		"build",
+		"-t", imageTag,
+		buildContext,
+	)
+
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	return imageTag, cmd.Run()
+}
+
+func generateImageTag(serviceName string) string {
+	return fmt.Sprintf(
+		"%s-%s:latest",
+		os.Getenv("IMAGE_TAG_PREFIX"),
+		serviceName,
+	)
+}
+
+func generateContainerName(id string, service string) string {
+	return fmt.Sprintf(
+		"%s-%s-%s",
+		os.Getenv("CONTAINER_NAME_PREFIX"),
+		service,
+		id,
+	)
 }

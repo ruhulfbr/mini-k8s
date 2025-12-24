@@ -7,7 +7,7 @@ RUN apk update && apk add --no-cache git docker
 WORKDIR /app
 
 # Copy go mod files first for better caching
-COPY go.mod go.sum ./
+COPY go.mod ./
 RUN go mod download
 
 # Install tools
