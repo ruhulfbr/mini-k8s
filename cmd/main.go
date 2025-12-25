@@ -8,11 +8,11 @@ import (
 
 	"github.com/hibiken/asynq"
 	"github.com/joho/godotenv"
-
-	"github.com/ruhulfbr/mini-k8s/api"
-	"github.com/ruhulfbr/mini-k8s/loadbalancer"
-	"github.com/ruhulfbr/mini-k8s/orchestrator"
-	"github.com/ruhulfbr/mini-k8s/worker"
+	"github.com/ruhulfbr/mini-k8s/cmd/api"
+	"github.com/ruhulfbr/mini-k8s/internal/datastore"
+	"github.com/ruhulfbr/mini-k8s/internal/http/handlers"
+	"github.com/ruhulfbr/mini-k8s/internal/loadbalancer"
+	"github.com/ruhulfbr/mini-k8s/internal/worker"
 )
 
 func main() {
@@ -31,38 +31,27 @@ func main() {
 	defer asynqClient.Close()
 
 	// ----------------------------------------------------
-	// Load Cluster Configuration
-	// ----------------------------------------------------
-	orchestrator.LoadConfig("cluster.json")
-
-	// ----------------------------------------------------
 	// Start Background Services
 	// ----------------------------------------------------
+	lb := loadbalancer.NewLoadBalancer(ds)
+	go lb.Serve()
+
 	startWorker(ds)
-	startLoadBalancer(ds)
 
 	// ----------------------------------------------------
 	// Start API Server
 	// ----------------------------------------------------
-	lbMgr := loadbalancer.NewManager(ds)
-	ctrl := orchestrator.NewController(ds, asynqClient, lbMgr)
+	ctrl := handlers.NewNodeHandler(ds, asynqClient, lb)
 	apiServer := api.NewServer(ctrl)
 
-	go func() {
-		apiPort := os.Getenv("API_PORT")
-
-		log.Println("[API] listening on :", apiPort)
-		if err := apiServer.Start(":" + apiPort); err != nil {
-			log.Fatal(err)
-		}
-	}()
+	go apiServer.Start()
 
 	// ----------------------------------------------------
 	// Graceful Shutdown
 	// ----------------------------------------------------
 	waitForShutdown()
 
-	log.Println("[Main] shutting down MiniKube-Go...")
+	log.Println("[Main] shutting down ", os.Getenv("API_NAME"))
 	time.Sleep(2 * time.Second)
 }
 
@@ -76,8 +65,8 @@ func loadEnv() {
 	}
 }
 
-func initDatastore() *orchestrator.Datastore {
-	ds := orchestrator.NewDatastore(os.Getenv("BADGER_DATA_SOURCE"))
+func initDatastore() *datastore.Datastore {
+	ds := datastore.NewDatastore(os.Getenv("BADGER_DATA_SOURCE"))
 	log.Println("[Datastore] initialized")
 
 	return ds
@@ -90,17 +79,10 @@ func initAsynqClient() *asynq.Client {
 	return client
 }
 
-func startWorker(ds *orchestrator.Datastore) {
+func startWorker(ds *datastore.Datastore) {
 	go func() {
 		log.Println("[Worker] starting...")
 		worker.StartWorker(ds, os.Getenv("REDIS_HOST"))
-	}()
-}
-
-func startLoadBalancer(ds *orchestrator.Datastore) {
-	go func() {
-		lb := loadbalancer.NewLoadBalancer(ds)
-		lb.Serve()
 	}()
 }
 

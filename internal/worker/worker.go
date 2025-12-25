@@ -10,12 +10,11 @@ import (
 	"time"
 
 	"github.com/hibiken/asynq"
-
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/api/types/network"
 	"github.com/moby/moby/client"
-
-	"github.com/ruhulfbr/mini-k8s/orchestrator"
+	"github.com/ruhulfbr/mini-k8s/internal/datastore"
+	"github.com/ruhulfbr/mini-k8s/internal/entities"
 )
 
 type DeployPayload struct {
@@ -30,24 +29,11 @@ type TerminatePayload struct {
 	Service string `json:"service"`
 }
 
-func StartWorker(ds *orchestrator.Datastore, redisAddr string) {
+func StartWorker(ds *datastore.Datastore, redisAddr string) {
 	server := asynq.NewServer(
 		asynq.RedisClientOpt{Addr: redisAddr},
 		asynq.Config{Concurrency: 10},
 	)
-
-	inspector := asynq.NewInspector(asynq.RedisClientOpt{Addr: redisAddr})
-
-	queues, err := inspector.Queues()
-	if err != nil {
-		panic(err)
-	}
-
-	for _, q := range queues {
-		stats, _ := inspector.GetQueueInfo(q)
-		fmt.Printf("Queue: %s, Pending: %d, Active: %d, Processed: %d, Failed: %d\n",
-			q, stats.Pending, stats.Active, stats.Processed, stats.Failed)
-	}
 
 	mux := asynq.NewServeMux()
 	mux.HandleFunc("deploy", handleDeploy(ds))
@@ -60,7 +46,7 @@ func StartWorker(ds *orchestrator.Datastore, redisAddr string) {
 
 // ---------------- DEPLOY ----------------
 
-func handleDeploy(ds *orchestrator.Datastore) asynq.HandlerFunc {
+func handleDeploy(ds *datastore.Datastore) asynq.HandlerFunc {
 	return func(ctx context.Context, t *asynq.Task) error {
 		var payload DeployPayload
 		if err := json.Unmarshal(t.Payload(), &payload); err != nil {
@@ -137,12 +123,12 @@ func handleDeploy(ds *orchestrator.Datastore) asynq.HandlerFunc {
 		}
 
 		// Update pod status in BadgerDB
-		pod := orchestrator.Pod{
+		pod := entities.Pod{
 			ID:      payload.ID,
 			Service: payload.Service,
 			Image:   payload.Image,
 			Port:    payload.Port,
-			Status:  orchestrator.PodRunning,
+			Status:  entities.PodRunning,
 			IP:      ip,
 		}
 
@@ -152,7 +138,7 @@ func handleDeploy(ds *orchestrator.Datastore) asynq.HandlerFunc {
 
 // ---------------- TERMINATE ----------------
 
-func handleTerminate(ds *orchestrator.Datastore) asynq.HandlerFunc {
+func handleTerminate(ds *datastore.Datastore) asynq.HandlerFunc {
 	return func(ctx context.Context, t *asynq.Task) error {
 		var payload TerminatePayload
 		if err := json.Unmarshal(t.Payload(), &payload); err != nil {
@@ -185,7 +171,7 @@ func handleTerminate(ds *orchestrator.Datastore) asynq.HandlerFunc {
 func buildImageFromDockerFile(ctx context.Context, payload DeployPayload) (string, error) {
 	imageTag := generateImageTag(payload.Service)
 
-	buildContext := "./clusters/" + payload.Service
+	buildContext := "./nodes/" + payload.Service
 
 	cmd := exec.CommandContext(
 		ctx,
