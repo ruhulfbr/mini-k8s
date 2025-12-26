@@ -1,5 +1,10 @@
 package entities
 
+import (
+	"github.com/google/uuid"
+	"github.com/ruhulfbr/mini-k8s/internal/http/requests"
+)
+
 type PodStatus string
 
 const (
@@ -14,4 +19,14 @@ type Pod struct {
 	Port    int       `json:"port"`
 	Status  PodStatus `json:"status"`
 	IP      string    `json:"ip"`
+}
+
+func NewPendingPod(req requests.ScaleRequest) Pod {
+	return Pod{
+		ID:      uuid.NewString(),
+		Service: req.ServiceName,
+		Image:   req.Image,
+		Port:    req.Port,
+		Status:  PodPending,
+	}
 }
