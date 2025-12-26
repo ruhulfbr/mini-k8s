@@ -30,3 +30,14 @@ func NewPendingPod(req requests.ScaleRequest) Pod {
 		Status:  PodPending,
 	}
 }
+
+func NewRunningPod(payload Pod, ip string) Pod {
+	return Pod{
+		ID:      payload.ID,
+		Service: payload.Service,
+		Image:   payload.Image,
+		Port:    payload.Port,
+		Status:  PodRunning,
+		IP:      ip,
+	}
+}
