@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -15,68 +16,132 @@ import (
 )
 
 type LoadBalancer struct {
-	ds       *datastore.Datastore
-	counter  uint64
-	interval time.Duration
+	ds      *datastore.Datastore
+	counter uint64
+
+	mu      sync.Mutex
+	servers map[string]*http.Server // service -> http server
 }
 
 func NewLoadBalancer(ds *datastore.Datastore) *LoadBalancer {
-	return &LoadBalancer{ds: ds, interval: 5 * time.Second}
+	return &LoadBalancer{
+		ds:      ds,
+		servers: make(map[string]*http.Server),
+	}
 }
 
+/*
+Start bootstraps load balancers for all existing services.
+This is useful on controller restart.
+*/
 func (lb *LoadBalancer) Start() {
-
-	nodes, err := lb.ds.ListPodsGroupedByService(context.Background())
-
-	if err != nil || len(nodes) == 0 {
-		log.Println("No Nodes available to run")
+	services, err := lb.ds.ListPodsGroupedByService(context.Background())
+	if err != nil || len(services) == 0 {
+		log.Println("[LB] no services found to start")
 		return
 	}
 
-	fmt.Println("Nodes:", nodes)
-
-	for _, pod := range nodes {
-		go lb.StartNodeListener(pod.Service, pod.Port)
+	for _, svc := range services {
+		go lb.StartServiceListener(svc.Service, svc.Port)
 	}
 }
 
-func (lb *LoadBalancer) StartNodeListener(service string, port int) {
-	handler := func(w http.ResponseWriter, r *http.Request) {
+/*
+StartServiceListener starts (or skips if already running)
+a load balancer for a single service.
+*/
+func (lb *LoadBalancer) StartServiceListener(service string, port int) {
+	lb.mu.Lock()
+	if _, exists := lb.servers[service]; exists {
+		lb.mu.Unlock()
+		log.Printf("[LB] already running for service=%s", service)
+		return
+	}
+
+	server := &http.Server{
+		Addr:    fmt.Sprintf(":%d", port),
+		Handler: lb.serviceHandler(service),
+	}
+
+	lb.servers[service] = server
+	lb.mu.Unlock()
+
+	log.Printf("[LB] started for service=%s on port=%d", service, port)
+
+	go func() {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Printf("[LB] error for service=%s: %v", service, err)
+		}
+	}()
+}
+
+/*
+StopServiceListener gracefully stops the load balancer
+for a given service.
+Call this when replicas reach 0 or service is deleted.
+*/
+func (lb *LoadBalancer) StopServiceListener(service string) {
+	lb.mu.Lock()
+	server, exists := lb.servers[service]
+	if !exists {
+		lb.mu.Unlock()
+		return
+	}
+	delete(lb.servers, service)
+	lb.mu.Unlock()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	log.Printf("[LB] stopping service=%s", service)
+	_ = server.Shutdown(ctx)
+}
+
+/*
+serviceHandler routes incoming requests to running pods
+using round-robin selection.
+*/
+func (lb *LoadBalancer) serviceHandler(service string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		pods, err := lb.ds.ListPodsByService(context.Background(), service)
-		if err != nil || len(pods) == 0 {
-			http.Error(w, "no pods available", http.StatusServiceUnavailable)
+		if err != nil {
+			http.Error(w, "service unavailable", http.StatusServiceUnavailable)
 			return
 		}
 
-		var runningPods []entities.Pod
-		for _, pod := range pods {
-			if pod.Status == "Running" {
-				runningPods = append(runningPods, pod)
-			}
-		}
-
+		runningPods := lb.filterRunningPods(pods)
 		if len(runningPods) == 0 {
 			http.Error(w, "no running pods", http.StatusServiceUnavailable)
 			return
 		}
 
-		idx := int(atomic.AddUint64(&lb.counter, 1)) % len(runningPods)
-		target := &url.URL{
-			Scheme: "http",
-			Host:   runningPods[idx].IP + ":80",
+		target := lb.selectNextPod(runningPods)
+		log.Println("[LB] proxying to", target.String())
+
+		httputil.NewSingleHostReverseProxy(target).ServeHTTP(w, r)
+	}
+}
+
+/*
+filterRunningPods returns only pods in Running state.
+*/
+func (lb *LoadBalancer) filterRunningPods(pods []entities.Pod) []entities.Pod {
+	out := make([]entities.Pod, 0)
+	for _, pod := range pods {
+		if pod.Status == entities.PodRunning {
+			out = append(out, pod)
 		}
-
-		fmt.Println("Load balancer target to : ", target.String())
-
-		proxy := httputil.NewSingleHostReverseProxy(target)
-		proxy.ServeHTTP(w, r)
 	}
+	return out
+}
 
-	server := &http.Server{
-		Addr:    fmt.Sprintf(":%d", port),
-		Handler: http.HandlerFunc(handler),
+/*
+selectNextPod selects a pod using round-robin strategy.
+*/
+func (lb *LoadBalancer) selectNextPod(pods []entities.Pod) *url.URL {
+	idx := int(atomic.AddUint64(&lb.counter, 1)) % len(pods)
+	return &url.URL{
+		Scheme: "http",
+		Host:   pods[idx].IP + ":80",
 	}
-
-	log.Printf("Load balancer listening on port %d", port)
-	log.Fatal(server.ListenAndServe())
 }

@@ -41,26 +41,30 @@ func (s *NodeService) CreateNode(ctx context.Context, req requests.ScaleRequest)
 		return err
 	}
 
-	go s.lb.StartNodeListener(req.ServiceName, req.Port)
+	go s.lb.StartServiceListener(req.ServiceName, req.Port)
+
 	return nil
 }
 
 func (s *NodeService) Scale(ctx context.Context, req requests.ScaleRequest) error {
-	pods, err := s.ds.ListPodsByService(ctx, req.ServiceName)
+	currentPods, err := s.ds.ListPodsByService(ctx, req.ServiceName)
 	if err != nil {
 		return err
 	}
 
-	diff := req.Replicas - len(pods)
+	currentReplicas := len(currentPods)
+	desiredReplicas := req.Replicas
+	delta := desiredReplicas - currentReplicas
 
+	// Scale up or down depending on delta
 	switch {
-	case diff > 0:
-		return s.scaleUp(ctx, req, diff)
-	case diff < 0:
-		return s.scaleDown(ctx, pods, -diff)
+	case delta > 0:
+		return s.scaleUp(ctx, req, delta)
+	case delta < 0:
+		return s.scaleDown(ctx, req.ServiceName, currentPods, -delta)
+	default:
+		return nil
 	}
-
-	return nil
 }
 
 func (s *NodeService) scaleUp(ctx context.Context, req requests.ScaleRequest, count int) error {
@@ -78,12 +82,17 @@ func (s *NodeService) scaleUp(ctx context.Context, req requests.ScaleRequest, co
 	return nil
 }
 
-func (s *NodeService) scaleDown(ctx context.Context, pods []entities.Pod, count int) error {
+func (s *NodeService) scaleDown(ctx context.Context, service string, pods []entities.Pod, count int) error {
 	for i := 0; i < count && i < len(pods); i++ {
 		task := jobs.NewTerminateTask(pods[i])
 		if _, err := s.queue.EnqueueContext(ctx, task); err != nil {
 			log.Printf("enqueue terminate failed: %v", err)
 		}
 	}
+
+	if len(pods) <= count {
+		go s.lb.StopServiceListener(service)
+	}
+
 	return nil
 }
