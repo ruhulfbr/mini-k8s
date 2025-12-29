@@ -16,7 +16,7 @@ type TerminatePayload struct {
 	Service string `json:"service"`
 }
 
-func NewTerminateHandler(ds *datastore.Datastore) asynq.HandlerFunc {
+func (w *Worker) HandleTerminate(ds *datastore.Datastore) asynq.HandlerFunc {
 	return func(ctx context.Context, t *asynq.Task) error {
 		var payload TerminatePayload
 		if err := json.Unmarshal(t.Payload(), &payload); err != nil {
@@ -32,7 +32,7 @@ func NewTerminateHandler(ds *datastore.Datastore) asynq.HandlerFunc {
 		}
 		defer cli.Close()
 
-		containerName := getContainerName(payload.ID, payload.Service)
+		containerName := w.getContainerName(payload.ID, payload.Service)
 
 		if _, err := cli.ContainerRemove(ctx, containerName, client.ContainerRemoveOptions{
 			Force:         true,

@@ -1,86 +1,97 @@
 package main
 
 import (
+	"context"
 	"log"
-	"os"
 	"os/signal"
+	"sync"
+	"syscall"
 
 	"github.com/hibiken/asynq"
-	"github.com/joho/godotenv"
 	"github.com/ruhulfbr/mini-k8s/cmd/api"
+	"github.com/ruhulfbr/mini-k8s/internal/config"
 	"github.com/ruhulfbr/mini-k8s/internal/datastore"
-	"github.com/ruhulfbr/mini-k8s/internal/http/handlers"
 	"github.com/ruhulfbr/mini-k8s/internal/loadbalancer"
-	"github.com/ruhulfbr/mini-k8s/internal/services"
 	"github.com/ruhulfbr/mini-k8s/internal/worker"
 )
 
 func main() {
-	loadEnv()
+	cfg := config.Load()
 
-	ds := initDatastore()
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	ds := initDatastore(cfg)
 	defer ds.Close()
 
-	asynqClient := initAsynqClient()
+	asynqClient := initAsynqClient(cfg)
 	defer asynqClient.Close()
 
+	var wg sync.WaitGroup
+
 	lb := loadbalancer.NewLoadBalancer(ds)
-	go lb.Start()
+	wg.Add(1)
+	go runLoadBalancer(ctx, &wg, lb)
 
-	startWorker(ds)
+	wg.Add(1)
+	go runWorker(ctx, &wg, ds, cfg)
 
-	startAPIServer(ds, asynqClient, lb)
-
-	waitForShutdown()
-	log.Println("[Main] shutting down", os.Getenv("API_NAME"))
-}
-
-/* ================= Helpers ================= */
-
-func loadEnv() {
-	if err := godotenv.Load(); err != nil {
-		log.Println("[ENV] using system environment variables")
+	app, err := api.InitServer(cfg, ds, asynqClient, lb)
+	if err != nil {
+		log.Fatal(err)
 	}
+
+	go func() {
+		if err := api.StartServer(app, cfg); err != nil {
+			log.Println("[API] stopped:", err)
+			stop()
+		}
+	}()
+
+	log.Println("[System] started")
+
+	<-ctx.Done()
+	log.Println("[System] shutting down...")
+
+	wg.Wait()
+	log.Println("[System] shutdown complete")
 }
 
-func initDatastore() *datastore.Datastore {
-	ds := datastore.NewDatastore(os.Getenv("BADGER_DATA_SOURCE"))
+/* ================= Setup ================= */
+
+func initDatastore(cfg *config.Config) *datastore.Datastore {
+	ds := datastore.NewDatastore(cfg.Badger.DataSource)
 	log.Println("[Datastore] initialized")
 	return ds
 }
 
-func initAsynqClient() *asynq.Client {
-	addr := os.Getenv("REDIS_HOST")
-	client := asynq.NewClient(asynq.RedisClientOpt{Addr: addr})
-	log.Println("[Asynq] connected:", addr)
+func initAsynqClient(cfg *config.Config) *asynq.Client {
+	client := asynq.NewClient(asynq.RedisClientOpt{
+		Addr: cfg.Redis.Host,
+	})
+	log.Println("[Asynq] connected:", cfg.Redis.Host)
 	return client
 }
 
-func startWorker(ds *datastore.Datastore) {
-	go func() {
-		log.Println("[Worker] started")
-		worker.StartWorker(ds, os.Getenv("REDIS_HOST"))
-	}()
+/* ================= Runners ================= */
+
+func runLoadBalancer(ctx context.Context, wg *sync.WaitGroup, lb *loadbalancer.LoadBalancer) {
+	defer wg.Done()
+	log.Println("[LoadBalancer] started")
+
+	go lb.Start()
+
+	<-ctx.Done()
+	log.Println("[LoadBalancer] stopped")
 }
 
-func startAPIServer(
-	ds *datastore.Datastore,
-	queue *asynq.Client,
-	lb *loadbalancer.LoadBalancer,
-) {
-	nodeService := services.NewNodeService(ds, queue, lb)
-	handler := handlers.NewNodeHandler(nodeService)
+func runWorker(ctx context.Context, wg *sync.WaitGroup, ds *datastore.Datastore, cfg *config.Config) {
+	defer wg.Done()
+	log.Println("[Worker] started")
 
-	server := api.NewServer(handler)
+	redisWorker := worker.NewWorker(cfg, ds)
+	go redisWorker.StartWorker()
 
-	go func() {
-		log.Println("[API] server started")
-		server.Start()
-	}()
-}
-
-func waitForShutdown() {
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt)
-	<-stop
+	<-ctx.Done()
+	log.Println("[Worker] stopped")
 }

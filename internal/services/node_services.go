@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/hibiken/asynq"
+	"github.com/ruhulfbr/mini-k8s/internal/config"
 	"github.com/ruhulfbr/mini-k8s/internal/datastore"
 	"github.com/ruhulfbr/mini-k8s/internal/entities"
 	"github.com/ruhulfbr/mini-k8s/internal/http/requests"
@@ -13,17 +14,19 @@ import (
 )
 
 type NodeService struct {
+	cfg   *config.Config
 	ds    *datastore.Datastore
 	queue *asynq.Client
 	lb    *loadbalancer.LoadBalancer
 }
 
 func NewNodeService(
+	cfg *config.Config,
 	ds *datastore.Datastore,
 	queue *asynq.Client,
 	lb *loadbalancer.LoadBalancer,
 ) *NodeService {
-	return &NodeService{ds: ds, queue: queue, lb: lb}
+	return &NodeService{cfg: cfg, ds: ds, queue: queue, lb: lb}
 }
 
 func (s *NodeService) CreateNode(ctx context.Context, req requests.ScaleRequest) error {

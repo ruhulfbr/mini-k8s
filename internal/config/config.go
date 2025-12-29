@@ -1,5 +1,18 @@
 package config
 
+import (
+	"log"
+	"sync"
+
+	"github.com/caarlos0/env/v11"
+	"github.com/joho/godotenv"
+)
+
+var (
+	cfg  *Config
+	once sync.Once
+)
+
 type Config struct {
 	App    AppConfig
 	HTTP   HTTPConfig
@@ -19,7 +32,8 @@ type HTTPConfig struct {
 }
 
 type RedisConfig struct {
-	Port int `env:"REDIS_PORT" envDefault:"6379"`
+	Host string `env:"REDIS_HOST" envDefault:"localhost"`
+	Port int    `env:"REDIS_PORT" envDefault:"6379"`
 }
 
 type BadgerConfig struct {
@@ -29,4 +43,18 @@ type BadgerConfig struct {
 type DockerConfig struct {
 	ContainerNamePref string `env:"CONTAINER_NAME_PREFIX"`
 	ImageTagPrefix    string `env:"IMAGE_TAG_PREFIX"`
+}
+
+func Load() *Config {
+	once.Do(func() {
+		_ = godotenv.Load()
+
+		var c Config
+		if err := env.Parse(&c); err != nil {
+			log.Fatalf("load config: %v", err)
+		}
+		cfg = &c
+	})
+
+	return cfg
 }

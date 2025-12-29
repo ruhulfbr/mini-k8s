@@ -4,18 +4,31 @@ import (
 	"log"
 
 	"github.com/hibiken/asynq"
+	"github.com/ruhulfbr/mini-k8s/internal/config"
 	"github.com/ruhulfbr/mini-k8s/internal/datastore"
 )
 
-func StartWorker(ds *datastore.Datastore, redisAddr string) {
+type Worker struct {
+	cfg *config.Config
+	ds  *datastore.Datastore
+}
+
+func NewWorker(cfg *config.Config, ds *datastore.Datastore) *Worker {
+	return &Worker{
+		cfg: cfg,
+		ds:  ds,
+	}
+}
+
+func (w *Worker) StartWorker() {
 	server := asynq.NewServer(
-		asynq.RedisClientOpt{Addr: redisAddr},
+		asynq.RedisClientOpt{Addr: w.cfg.Redis.Host},
 		asynq.Config{Concurrency: 10},
 	)
 
 	mux := asynq.NewServeMux()
-	mux.Handle("deploy", NewDeployHandler(ds))
-	mux.Handle("terminate", NewTerminateHandler(ds))
+	mux.Handle("deploy", w.HandleDeploy(w.ds))
+	mux.Handle("terminate", w.HandleTerminate(w.ds))
 
 	log.Println("[Worker] starting...")
 	if err := server.Run(mux); err != nil {

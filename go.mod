@@ -3,7 +3,9 @@ module github.com/ruhulfbr/mini-k8s
 go 1.25.1
 
 require (
+	github.com/caarlos0/env/v11 v11.3.1
 	github.com/dgraph-io/badger/v3 v3.2103.5
+	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/google/uuid v1.6.0
 	github.com/hibiken/asynq v0.25.1
 	github.com/joho/godotenv v1.5.1

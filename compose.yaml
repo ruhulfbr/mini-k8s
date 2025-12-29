@@ -1,4 +1,3 @@
-version: "3.9"
 services:
   mini-k8s-controller:
     container_name: mini-k8s-controller

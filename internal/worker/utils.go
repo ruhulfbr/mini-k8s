@@ -10,8 +10,8 @@ import (
 	"github.com/ruhulfbr/mini-k8s/internal/entities"
 )
 
-func buildImage(payload entities.Pod) (string, error) {
-	imageTag := generateImageTag(payload.Service)
+func (w *Worker) buildImage(payload entities.Pod) (string, error) {
+	imageTag := w.generateImageTag(payload.Service)
 	buildContext := "./nodes/" + payload.Service
 
 	cmd := exec.CommandContext(
@@ -27,15 +27,15 @@ func buildImage(payload entities.Pod) (string, error) {
 	return imageTag, cmd.Run()
 }
 
-func generateImageTag(service string) string {
-	return fmt.Sprintf("%s-%s:latest", os.Getenv("IMAGE_TAG_PREFIX"), service)
+func (w *Worker) generateImageTag(service string) string {
+	return fmt.Sprintf("%s-%s:latest", w.cfg.Docker.ImageTagPrefix, service)
 }
 
-func getContainerName(id, service string) string {
-	return fmt.Sprintf("%s-%s-%s", os.Getenv("CONTAINER_NAME_PREFIX"), service, id)
+func (w *Worker) getContainerName(id, service string) string {
+	return fmt.Sprintf("%s-%s-%s", w.cfg.Docker.ContainerNamePref, service, id)
 }
 
-func getContainerIP(cli *client.Client, ctx context.Context, containerID string) (string, error) {
+func (w *Worker) getContainerIP(cli *client.Client, ctx context.Context, containerID string) (string, error) {
 	inspect, err := cli.ContainerInspect(ctx, containerID, client.ContainerInspectOptions{})
 	if err != nil {
 		return "", err

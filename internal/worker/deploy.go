@@ -14,7 +14,7 @@ import (
 	"github.com/ruhulfbr/mini-k8s/internal/entities"
 )
 
-func NewDeployHandler(ds *datastore.Datastore) asynq.HandlerFunc {
+func (w *Worker) HandleDeploy(ds *datastore.Datastore) asynq.HandlerFunc {
 	return func(ctx context.Context, t *asynq.Task) error {
 		var payload entities.Pod
 		if err := json.Unmarshal(t.Payload(), &payload); err != nil {
@@ -32,12 +32,12 @@ func NewDeployHandler(ds *datastore.Datastore) asynq.HandlerFunc {
 		}
 		defer cli.Close()
 
-		imageTag, err := buildImage(payload)
+		imageTag, err := w.buildImage(payload)
 		if err != nil {
 			return fmt.Errorf("[Deploy] image build failed: %v", err)
 		}
 
-		containerName := getContainerName(payload.ID, payload.Service)
+		containerName := w.getContainerName(payload.ID, payload.Service)
 
 		resp, err := cli.ContainerCreate(ctx, client.ContainerCreateOptions{
 			Config: &container.Config{
@@ -61,7 +61,7 @@ func NewDeployHandler(ds *datastore.Datastore) asynq.HandlerFunc {
 			return err
 		}
 
-		ip, err := getContainerIP(cli, ctx, resp.ID)
+		ip, err := w.getContainerIP(cli, ctx, resp.ID)
 		if err != nil {
 			return fmt.Errorf("[Deploy] get IP failed: %v", err)
 		}
