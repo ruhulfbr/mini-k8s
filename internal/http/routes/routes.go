@@ -21,7 +21,7 @@ func ConfigureRoutes(
 
 	engine.HTTPErrorHandler = middleware.EchoHTTPErrorHandler
 
-	api := engine.Group("/api")
+	api := engine.Group("/server")
 	api.POST("/deploy", appHandlers.NodeHandler.HandleDeploy)
 	api.POST("/scale", appHandlers.NodeHandler.HandleScale)
 

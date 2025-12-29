@@ -8,7 +8,6 @@ import (
 
 	"github.com/hibiken/asynq"
 	"github.com/moby/moby/client"
-	"github.com/ruhulfbr/mini-k8s/internal/datastore"
 )
 
 type TerminatePayload struct {
@@ -16,7 +15,7 @@ type TerminatePayload struct {
 	Service string `json:"service"`
 }
 
-func (w *Worker) HandleTerminate(ds *datastore.Datastore) asynq.HandlerFunc {
+func (w *Worker) HandleTerminate() asynq.HandlerFunc {
 	return func(ctx context.Context, t *asynq.Task) error {
 		var payload TerminatePayload
 		if err := json.Unmarshal(t.Payload(), &payload); err != nil {
@@ -42,6 +41,6 @@ func (w *Worker) HandleTerminate(ds *datastore.Datastore) asynq.HandlerFunc {
 			return err
 		}
 
-		return ds.DeletePod(ctx, payload.Service, payload.ID)
+		return w.podRepo.DeletePod(ctx, payload.Service, payload.ID)
 	}
 }

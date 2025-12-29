@@ -5,32 +5,29 @@ import (
 	"log"
 
 	"github.com/hibiken/asynq"
-	"github.com/ruhulfbr/mini-k8s/internal/config"
-	"github.com/ruhulfbr/mini-k8s/internal/datastore"
 	"github.com/ruhulfbr/mini-k8s/internal/entities"
 	"github.com/ruhulfbr/mini-k8s/internal/http/requests"
 	"github.com/ruhulfbr/mini-k8s/internal/jobs"
 	"github.com/ruhulfbr/mini-k8s/internal/loadbalancer"
+	"github.com/ruhulfbr/mini-k8s/internal/repositories"
 )
 
 type NodeService struct {
-	cfg   *config.Config
-	ds    *datastore.Datastore
+	repo  *repositories.PodRepository
 	queue *asynq.Client
 	lb    *loadbalancer.LoadBalancer
 }
 
 func NewNodeService(
-	cfg *config.Config,
-	ds *datastore.Datastore,
+	repo *repositories.PodRepository,
 	queue *asynq.Client,
 	lb *loadbalancer.LoadBalancer,
 ) *NodeService {
-	return &NodeService{cfg: cfg, ds: ds, queue: queue, lb: lb}
+	return &NodeService{repo: repo, queue: queue, lb: lb}
 }
 
 func (s *NodeService) CreateNode(ctx context.Context, req requests.ScaleRequest) error {
-	pods, err := s.ds.ListPodsByService(ctx, req.ServiceName)
+	pods, err := s.repo.ListPodsByService(ctx, req.ServiceName)
 	if err != nil {
 		return err
 	}
@@ -50,7 +47,7 @@ func (s *NodeService) CreateNode(ctx context.Context, req requests.ScaleRequest)
 }
 
 func (s *NodeService) Scale(ctx context.Context, req requests.ScaleRequest) error {
-	currentPods, err := s.ds.ListPodsByService(ctx, req.ServiceName)
+	currentPods, err := s.repo.ListPodsByService(ctx, req.ServiceName)
 	if err != nil {
 		return err
 	}
@@ -80,7 +77,7 @@ func (s *NodeService) scaleUp(ctx context.Context, req requests.ScaleRequest, co
 			continue
 		}
 
-		_ = s.ds.PutPod(ctx, pod)
+		_ = s.repo.PutPod(ctx, pod)
 	}
 	return nil
 }

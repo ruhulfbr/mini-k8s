@@ -1,16 +1,15 @@
 package repositories
 
-import "github.com/ruhulfbr/mini-k8s/internal/datastore"
+import (
+	"github.com/dgraph-io/badger/v3"
+)
 
 type Repositories struct {
-	//ApplicationRepository user.Repository
-	//ServiceRepository post.Repository
-	//PodRepository post.Repository
+	PodRepository *PodRepository
 }
 
-func InitRepositories(ds *datastore.Datastore) *Repositories {
+func InitRepositories(DB *badger.DB) *Repositories {
 	return &Repositories{
-		//UserRepository: userRepo.NewUserRepository(db),
-		//PostRepository: postRepo.NewPostRepository(db),
+		PodRepository: NewPodRepository(DB),
 	}
 }

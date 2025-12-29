@@ -2,6 +2,7 @@ package loadbalancer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,21 +12,20 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ruhulfbr/mini-k8s/internal/datastore"
 	"github.com/ruhulfbr/mini-k8s/internal/entities"
+	"github.com/ruhulfbr/mini-k8s/internal/repositories"
 )
 
 type LoadBalancer struct {
-	ds      *datastore.Datastore
+	podRepo *repositories.PodRepository
 	counter uint64
-
 	mu      sync.Mutex
-	servers map[string]*http.Server // service -> http server
+	servers map[string]*http.Server
 }
 
-func NewLoadBalancer(ds *datastore.Datastore) *LoadBalancer {
+func NewLoadBalancer(podRepo *repositories.PodRepository) *LoadBalancer {
 	return &LoadBalancer{
-		ds:      ds,
+		podRepo: podRepo,
 		servers: make(map[string]*http.Server),
 	}
 }
@@ -35,7 +35,7 @@ Start bootstraps load balancers for all existing services.
 This is useful on controller restart.
 */
 func (lb *LoadBalancer) Start() {
-	services, err := lb.ds.ListPodsGroupedByService(context.Background())
+	services, err := lb.podRepo.ListPodsGroupedByService(context.Background())
 	if err != nil || len(services) == 0 {
 		log.Println("[LB] no services found to start")
 		return
@@ -69,7 +69,7 @@ func (lb *LoadBalancer) StartServiceListener(service string, port int) {
 	log.Printf("[LB] started for service=%s on port=%d", service, port)
 
 	go func() {
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Printf("[LB] error for service=%s: %v", service, err)
 		}
 	}()
@@ -103,7 +103,7 @@ using round-robin selection.
 */
 func (lb *LoadBalancer) serviceHandler(service string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		pods, err := lb.ds.ListPodsByService(context.Background(), service)
+		pods, err := lb.podRepo.ListPodsByService(context.Background(), service)
 		if err != nil {
 			http.Error(w, "service unavailable", http.StatusServiceUnavailable)
 			return

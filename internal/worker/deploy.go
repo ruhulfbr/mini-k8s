@@ -10,11 +10,10 @@ import (
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/api/types/network"
 	"github.com/moby/moby/client"
-	"github.com/ruhulfbr/mini-k8s/internal/datastore"
 	"github.com/ruhulfbr/mini-k8s/internal/entities"
 )
 
-func (w *Worker) HandleDeploy(ds *datastore.Datastore) asynq.HandlerFunc {
+func (w *Worker) HandleDeploy() asynq.HandlerFunc {
 	return func(ctx context.Context, t *asynq.Task) error {
 		var payload entities.Pod
 		if err := json.Unmarshal(t.Payload(), &payload); err != nil {
@@ -68,6 +67,6 @@ func (w *Worker) HandleDeploy(ds *datastore.Datastore) asynq.HandlerFunc {
 
 		pod := entities.NewRunningPod(payload, ip)
 
-		return ds.PutPod(ctx, pod)
+		return w.podRepo.PutPod(ctx, pod)
 	}
 }

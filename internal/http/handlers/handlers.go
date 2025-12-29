@@ -20,8 +20,8 @@ func InitHandlers(
 	lb *loadbalancer.LoadBalancer,
 ) *Handlers {
 
-	repos := repositories.InitRepositories(ds)
-	appServices, _ := services.InitServices(repos, cfg, ds, asynqClient, lb)
+	repos := repositories.InitRepositories(ds.DB)
+	appServices, _ := services.InitServices(repos, cfg, asynqClient, lb)
 
 	return &Handlers{
 		NodeHandler: NewNodeHandler(appServices.NodeService),

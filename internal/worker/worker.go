@@ -5,18 +5,18 @@ import (
 
 	"github.com/hibiken/asynq"
 	"github.com/ruhulfbr/mini-k8s/internal/config"
-	"github.com/ruhulfbr/mini-k8s/internal/datastore"
+	"github.com/ruhulfbr/mini-k8s/internal/repositories"
 )
 
 type Worker struct {
-	cfg *config.Config
-	ds  *datastore.Datastore
+	cfg     *config.Config
+	podRepo *repositories.PodRepository
 }
 
-func NewWorker(cfg *config.Config, ds *datastore.Datastore) *Worker {
+func NewWorker(cfg *config.Config, podRepo *repositories.PodRepository) *Worker {
 	return &Worker{
-		cfg: cfg,
-		ds:  ds,
+		cfg:     cfg,
+		podRepo: podRepo,
 	}
 }
 
@@ -27,8 +27,8 @@ func (w *Worker) StartWorker() {
 	)
 
 	mux := asynq.NewServeMux()
-	mux.Handle("deploy", w.HandleDeploy(w.ds))
-	mux.Handle("terminate", w.HandleTerminate(w.ds))
+	mux.Handle("deploy", w.HandleDeploy())
+	mux.Handle("terminate", w.HandleTerminate())
 
 	log.Println("[Worker] starting...")
 	if err := server.Run(mux); err != nil {
