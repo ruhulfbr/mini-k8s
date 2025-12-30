@@ -2,7 +2,9 @@ package repositories
 
 import (
 	"database/sql"
+	"errors"
 
+	"github.com/ruhulfbr/mini-k8s/internal/apperrors"
 	"github.com/ruhulfbr/mini-k8s/internal/entities"
 )
 
@@ -55,9 +57,13 @@ func (r *ApplicationRepository) GetByID(id int64) (*entities.Application, error)
 		FROM applications WHERE id = ?`, id).
 		Scan(&a.Id, &a.Name, &a.GitRepo, &a.CreatedAt, &a.UpdatedAt)
 
-	if err == sql.ErrNoRows {
-		return nil, nil
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, apperrors.NotFound
+		}
+		return nil, err
 	}
+
 	return &a, err
 }
 
@@ -68,7 +74,7 @@ func (r *ApplicationRepository) ExistsByName(name string) bool {
 		FROM applications WHERE name = ?`, name).
 		Scan(&a.Id)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return false
 	}
 
@@ -84,16 +90,36 @@ func (r *ApplicationRepository) Create(a *entities.Application) error {
 		Scan(&a.Id, &a.CreatedAt, &a.UpdatedAt)
 }
 
-func (r *ApplicationRepository) Update(a *entities.Application) error {
-	_, err := r.db.Exec(`
+func (r *ApplicationRepository) Update(app *entities.Application) error {
+	res, err := r.db.Exec(`
 		UPDATE applications
 		SET name = ?, git_repo = ?, updated_at = CURRENT_TIMESTAMP
-		WHERE id = ?`,
-		a.Name, a.GitRepo, a.Id)
-	return err
+		WHERE id = ?
+	`, app.Name, app.GitRepo, app.Id)
+
+	if err != nil {
+		return err
+	}
+
+	affected, _ := res.RowsAffected()
+	if affected == 0 {
+		return apperrors.NotFound
+	}
+
+	return nil
 }
 
 func (r *ApplicationRepository) Delete(id int64) error {
-	_, err := r.db.Exec(`DELETE FROM applications WHERE id = ?`, id)
-	return err
+	res, err := r.db.Exec(`DELETE FROM applications WHERE id = ?`, id)
+
+	if err != nil {
+		return err
+	}
+
+	affected, _ := res.RowsAffected()
+	if affected == 0 {
+		return apperrors.NotFound
+	}
+
+	return nil
 }

@@ -12,4 +12,9 @@ var (
 		Code:    http.StatusUnprocessableEntity,
 		Message: "Invalid request body",
 	}
+
+	NotFound = &AppError{
+		Code:    http.StatusNotFound,
+		Message: "Record not found",
+	}
 )

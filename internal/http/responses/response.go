@@ -45,6 +45,14 @@ func Created(c echo.Context, data interface{}) error {
 	return Success(c, http.StatusCreated, "Created successfully", data)
 }
 
+func NoContent(c echo.Context) error {
+	return c.NoContent(http.StatusNoContent)
+}
+
+func Accepted(c echo.Context, data interface{}) error {
+	return Success(c, http.StatusAccepted, "Accepted", data)
+}
+
 func Error(c echo.Context, statusCode int, message string, errors ...interface{}) error {
 	msg := message
 	if msg == "" {

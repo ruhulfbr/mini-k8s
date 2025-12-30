@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"net/http"
 	"strconv"
 
 	"github.com/labstack/echo/v4"
@@ -32,7 +31,18 @@ func (h *ApplicationHandler) List(c echo.Context) error {
 		return err
 	}
 
-	return responses.Success(c, http.StatusOK, "", apps)
+	return responses.OK(c, apps)
+}
+
+func (h *ApplicationHandler) Show(c echo.Context) error {
+	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+
+	app, err := h.service.GetByID(id)
+	if err != nil {
+		return err
+	}
+
+	return responses.OK(c, app)
 }
 
 func (h *ApplicationHandler) Create(c echo.Context) error {
@@ -53,7 +63,7 @@ func (h *ApplicationHandler) Create(c echo.Context) error {
 		return err
 	}
 
-	return c.JSON(http.StatusCreated, app)
+	return responses.Created(c, app)
 }
 
 func (h *ApplicationHandler) Update(c echo.Context) error {
@@ -61,7 +71,7 @@ func (h *ApplicationHandler) Update(c echo.Context) error {
 
 	req := new(requests.UpdateApplicationRequest)
 	if err := c.Bind(req); err != nil {
-		return err
+		return apperrors.InvalidRequestBody
 	}
 	if err := c.Validate(req); err != nil {
 		return err
@@ -75,10 +85,17 @@ func (h *ApplicationHandler) Update(c echo.Context) error {
 	if err := h.service.Update(app); err != nil {
 		return err
 	}
-	return c.NoContent(http.StatusOK)
+
+	return responses.OK(c, app)
 }
 
 func (h *ApplicationHandler) Delete(c echo.Context) error {
 	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
-	return h.service.Delete(id)
+
+	err := h.service.Delete(id)
+	if err != nil {
+		return err
+	}
+
+	return responses.NoContent(c)
 }

@@ -19,7 +19,12 @@ func (s *ApplicationService) List(name *string) ([]entities.Application, error) 
 }
 
 func (s *ApplicationService) GetByID(id int64) (*entities.Application, error) {
-	return s.repo.GetByID(id)
+	app, err := s.repo.GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	return app, nil
 }
 
 func (s *ApplicationService) Create(app *entities.Application) error {
@@ -31,10 +36,6 @@ func (s *ApplicationService) Create(app *entities.Application) error {
 }
 
 func (s *ApplicationService) Update(app *entities.Application) error {
-	if app.Id < 1 {
-		return apperrors.InvalidApplicationId
-	}
-
 	return s.repo.Update(app)
 }
 

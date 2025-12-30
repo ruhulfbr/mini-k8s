@@ -26,6 +26,7 @@ func ConfigureRoutes(
 	app := api.Group("/applications")
 	app.GET("", appHandlers.ApplicationHandler.List)
 	app.POST("", appHandlers.ApplicationHandler.Create)
+	app.GET("/:id", appHandlers.ApplicationHandler.Show)
 	app.PUT("/:id", appHandlers.ApplicationHandler.Update)
 	app.DELETE("/:id", appHandlers.ApplicationHandler.Delete)
 
