@@ -8,7 +8,11 @@ import (
 )
 
 type Services struct {
-	NodeService *NodeService
+	ApplicationService  *ApplicationService
+	ServiceService      *ServiceService
+	BuildHistoryService *BuildHistoryService
+	PodService          *PodService
+	NodeService         *NodeService
 }
 
 func InitServices(
@@ -18,7 +22,11 @@ func InitServices(
 	lb *loadbalancer.LoadBalancer,
 ) (*Services, error) {
 	sv := &Services{
-		NodeService: NewNodeService(repos.PodRepository, asynqClient, lb),
+		ApplicationService:  NewApplicationService(repos.ApplicationRepository),
+		ServiceService:      NewServiceService(repos.ServiceRepository),
+		BuildHistoryService: NewBuildHistoryService(repos.BuildHistoryRepository),
+		PodService:          NewPodService(repos.PodRepository),
+		NodeService:         NewNodeService(repos.PodRepository, asynqClient, lb),
 	}
 
 	return sv, nil

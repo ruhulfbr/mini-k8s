@@ -8,7 +8,7 @@ import (
 
 	"github.com/hibiken/asynq"
 	"github.com/ruhulfbr/mini-k8s/internal/config"
-	"github.com/ruhulfbr/mini-k8s/internal/datastore"
+	"github.com/ruhulfbr/mini-k8s/internal/database"
 )
 
 func Run() error {
@@ -23,8 +23,8 @@ func Run() error {
 	)
 	defer stop()
 
-	// Initialize datastore (shared by all components)
-	ds := datastore.NewDatastore(cfg)
+	// Initialize database (shared by all components)
+	ds := database.NewDatastore(cfg)
 	defer ds.Close()
 
 	// Initialize Asynq client (used by API to enqueue jobs)
@@ -33,12 +33,10 @@ func Run() error {
 	})
 	defer asynqClient.Close()
 
-	// Initialize and start load balancer
-	//  is a long-running component
+	// Initialize and start load balancer (is a long-running component)
 	lb := InitLoadBalancer(ds)
 
-	// Start background worker (Asynq consumer)
-	// Runs independently of the HTTP server
+	// Start background worker (Asynq consumer). Runs independently of the HTTP server
 	go startWorker(cfg, ds)
 
 	// Initialize HTTP API server
@@ -52,7 +50,6 @@ func Run() error {
 		log.Println("[API] started")
 		if err := StartServer(app, cfg); err != nil {
 			log.Println("[API] stopped:", err)
-			// Trigger global shutdown if HTTP server exits
 			stop()
 		}
 	}()
@@ -65,7 +62,7 @@ func Run() error {
 	log.Println("[System] shutting down...")
 
 	// NOTE:
-	// - Datastore and Asynq client are closed via defer
+	// - Database and Asynq client are closed via defer
 	// - Worker and load balancer should stop when process exits
 	// - For graceful shutdown, pass ctx to those components
 

@@ -8,7 +8,7 @@ services:
     restart: on-failure
     volumes:
       - ./:/app/
-      - ./data:/app/data # BadgerDB Data Source
+      - ./data:/app/data # SQLite Data Source
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - mini-k8s-redis

@@ -17,7 +17,7 @@ type Config struct {
 	App    AppConfig
 	HTTP   HTTPConfig
 	Redis  RedisConfig
-	Badger BadgerConfig
+	SQLite SQLiteConfig
 	Docker DockerConfig
 }
 
@@ -36,8 +36,8 @@ type RedisConfig struct {
 	Port int    `env:"REDIS_PORT" envDefault:"6379"`
 }
 
-type BadgerConfig struct {
-	DataSource string `env:"BADGER_DATA_SOURCE" envDefault:"data/badger"`
+type SQLiteConfig struct {
+	DataSource string `env:"SQLITE_DATA_SOURCE" envDefault:"data/sqlite/mini-k8s.db"`
 }
 
 type DockerConfig struct {

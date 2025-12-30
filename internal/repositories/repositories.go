@@ -1,15 +1,21 @@
 package repositories
 
 import (
-	"github.com/dgraph-io/badger/v3"
+	"database/sql"
 )
 
 type Repositories struct {
-	PodRepository *PodRepository
+	ApplicationRepository  *ApplicationRepository
+	ServiceRepository      *ServiceRepository
+	BuildHistoryRepository *BuildHistoryRepository
+	PodRepository          *PodRepository
 }
 
-func InitRepositories(DB *badger.DB) *Repositories {
+func InitRepositories(DB *sql.DB) *Repositories {
 	return &Repositories{
-		PodRepository: NewPodRepository(DB),
+		ApplicationRepository:  NewApplicationRepository(DB),
+		ServiceRepository:      NewServiceRepository(DB),
+		BuildHistoryRepository: NewBuildHistoryRepository(DB),
+		PodRepository:          NewPodRepository(DB),
 	}
 }

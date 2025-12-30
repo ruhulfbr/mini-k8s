@@ -14,7 +14,7 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/labstack/echo/v4"
 	"github.com/ruhulfbr/mini-k8s/internal/config"
-	"github.com/ruhulfbr/mini-k8s/internal/datastore"
+	"github.com/ruhulfbr/mini-k8s/internal/database"
 	"github.com/ruhulfbr/mini-k8s/internal/http/routes"
 	"github.com/ruhulfbr/mini-k8s/internal/loadbalancer"
 )
@@ -47,15 +47,13 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 func InitServer(
 	cfg *config.Config,
-	ds *datastore.Datastore,
+	ds *database.Database,
 	asynqClient *asynq.Client,
 	lb *loadbalancer.LoadBalancer,
 ) (*Server, error) {
 	engine := echo.New()
 
-	if err := routes.ConfigureRoutes(engine, cfg, ds, asynqClient, lb); err != nil {
-		return nil, err
-	}
+	routes.ConfigureRoutes(engine, cfg, ds, asynqClient, lb)
 
 	return NewServer(engine), nil
 }
