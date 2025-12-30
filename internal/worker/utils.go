@@ -3,28 +3,28 @@ package worker
 import (
 	"context"
 	"fmt"
-	"os"
-	"os/exec"
 
 	"github.com/moby/moby/client"
 	"github.com/ruhulfbr/mini-k8s/internal/entities"
 )
 
 func (w *Worker) buildImage(payload entities.Pod) (string, error) {
-	imageTag := w.generateImageTag(payload.Service)
-	buildContext := "./nodes/" + payload.Service
+	return "", nil
 
-	cmd := exec.CommandContext(
-		context.Background(),
-		"docker", "build",
-		"-t", imageTag,
-		buildContext,
-	)
-
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	return imageTag, cmd.Run()
+	//imageTag := w.generateImageTag(payload.Service)
+	//buildContext := "./nodes/" + payload.Service
+	//
+	//cmd := exec.CommandContext(
+	//	context.Background(),
+	//	"docker", "build",
+	//	"-t", imageTag,
+	//	buildContext,
+	//)
+	//
+	//cmd.Stdout = os.Stdout
+	//cmd.Stderr = os.Stderr
+	//
+	//return imageTag, cmd.Run()
 }
 
 func (w *Worker) generateImageTag(service string) string {

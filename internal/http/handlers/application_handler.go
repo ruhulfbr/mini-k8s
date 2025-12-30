@@ -5,8 +5,10 @@ import (
 	"strconv"
 
 	"github.com/labstack/echo/v4"
+	"github.com/ruhulfbr/mini-k8s/internal/apperrors"
 	"github.com/ruhulfbr/mini-k8s/internal/entities"
 	"github.com/ruhulfbr/mini-k8s/internal/http/requests"
+	"github.com/ruhulfbr/mini-k8s/internal/http/responses"
 	"github.com/ruhulfbr/mini-k8s/internal/services"
 )
 
@@ -29,14 +31,16 @@ func (h *ApplicationHandler) List(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	return c.JSON(http.StatusOK, apps)
+
+	return responses.Success(c, http.StatusOK, "", apps)
 }
 
 func (h *ApplicationHandler) Create(c echo.Context) error {
 	req := new(requests.CreateApplicationRequest)
 	if err := c.Bind(req); err != nil {
-		return err
+		return apperrors.InvalidRequestBody
 	}
+
 	if err := c.Validate(req); err != nil {
 		return err
 	}
@@ -48,6 +52,7 @@ func (h *ApplicationHandler) Create(c echo.Context) error {
 	if err := h.service.Create(app); err != nil {
 		return err
 	}
+
 	return c.JSON(http.StatusCreated, app)
 }
 
@@ -63,7 +68,7 @@ func (h *ApplicationHandler) Update(c echo.Context) error {
 	}
 
 	app := &entities.Application{
-		ID:      id,
+		Id:      id,
 		Name:    req.Name,
 		GitRepo: req.GitRepo,
 	}

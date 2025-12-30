@@ -37,7 +37,7 @@ func Run() error {
 	lb := InitLoadBalancer(ds)
 
 	// Start background worker (Asynq consumer). Runs independently of the HTTP server
-	go startWorker(cfg, ds)
+	// go startWorker(cfg, ds)
 
 	// Initialize HTTP API server
 	app, err := InitServer(cfg, ds, asynqClient, lb)

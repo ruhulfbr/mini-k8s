@@ -1,8 +1,7 @@
 package services
 
 import (
-	"errors"
-
+	"github.com/ruhulfbr/mini-k8s/internal/apperrors"
 	"github.com/ruhulfbr/mini-k8s/internal/entities"
 	"github.com/ruhulfbr/mini-k8s/internal/repositories"
 )
@@ -24,16 +23,18 @@ func (s *ApplicationService) GetByID(id int64) (*entities.Application, error) {
 }
 
 func (s *ApplicationService) Create(app *entities.Application) error {
-	if app.Name == "" || app.GitRepo == "" {
-		return errors.New("name and git_repo are required")
+	if s.repo.ExistsByName(app.Name) {
+		return apperrors.ApplicationAlreadyExist
 	}
+
 	return s.repo.Create(app)
 }
 
 func (s *ApplicationService) Update(app *entities.Application) error {
-	if app.ID == 0 {
-		return errors.New("invalid application id")
+	if app.Id < 1 {
+		return apperrors.InvalidApplicationId
 	}
+
 	return s.repo.Update(app)
 }
 

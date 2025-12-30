@@ -16,6 +16,7 @@ import (
 	"github.com/ruhulfbr/mini-k8s/internal/config"
 	"github.com/ruhulfbr/mini-k8s/internal/database"
 	"github.com/ruhulfbr/mini-k8s/internal/http/routes"
+	"github.com/ruhulfbr/mini-k8s/internal/http/validator"
 	"github.com/ruhulfbr/mini-k8s/internal/loadbalancer"
 )
 
@@ -52,6 +53,7 @@ func InitServer(
 	lb *loadbalancer.LoadBalancer,
 ) (*Server, error) {
 	engine := echo.New()
+	engine.Validator = validator.New()
 
 	routes.ConfigureRoutes(engine, cfg, ds, asynqClient, lb)
 

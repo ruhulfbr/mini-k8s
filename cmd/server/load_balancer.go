@@ -10,7 +10,7 @@ func InitLoadBalancer(ds *database.Database) *loadbalancer.LoadBalancer {
 	podRepository := repositories.NewPodRepository(ds.DB)
 
 	lb := loadbalancer.NewLoadBalancer(podRepository)
-	lb.Start()
+	// lb.Start()
 
 	return lb
 }

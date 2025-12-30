@@ -3,9 +3,11 @@ package middleware
 import (
 	"errors"
 	"net/http"
+	"strings"
 
-	"github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
+	"github.com/ruhulfbr/mini-k8s/internal/apperrors"
 )
 
 type FieldError struct {
@@ -14,45 +16,74 @@ type FieldError struct {
 }
 
 func EchoHTTPErrorHandler(err error, c echo.Context) {
-	// Handle validation errors
-	var ve validation.Errors
+	var ve validator.ValidationErrors
+
 	if errors.As(err, &ve) {
-		var errorsArr []FieldError
-		for field, e := range ve {
+		errorsArr := make([]FieldError, 0, len(ve))
+
+		for _, fe := range ve {
 			errorsArr = append(errorsArr, FieldError{
-				Field:   field,
-				Message: e.Error(),
+				Field:   fe.Field(),
+				Message: validationMessage(fe),
 			})
 		}
 
-		err := c.JSON(http.StatusUnprocessableEntity, map[string]interface{}{
-			"code":    http.StatusUnprocessableEntity,
-			"message": "Validation Error",
-			"errors":  errorsArr,
+		_ = c.JSON(http.StatusUnprocessableEntity, map[string]interface{}{
+			"message":   "Validation failed",
+			"apperrors": errorsArr,
 		})
-		if err != nil {
-			return
-		}
 		return
 	}
 
+	// App errors
+	var appErr *apperrors.AppError
+	if errors.As(err, &appErr) {
+		_ = c.JSON(appErr.Code, map[string]interface{}{
+			"message": appErr.Message,
+		})
+		return
+	}
+
+	// --------------------------------------------------
+	// 2. Handle Echo HTTP apperrors
+	// --------------------------------------------------
 	var he *echo.HTTPError
 	if errors.As(err, &he) {
-		err := c.JSON(he.Code, map[string]interface{}{
-			"code":  he.Code,
-			"error": he.Message,
+		_ = c.JSON(he.Code, map[string]interface{}{
+			"message": he.Message,
 		})
-		if err != nil {
-			return
-		}
 		return
 	}
 
-	err = c.JSON(http.StatusInternalServerError, map[string]interface{}{
-		"code":  500,
-		"error": err.Error(),
+	// --------------------------------------------------
+	// 3. Fallback: Bad Request
+	// --------------------------------------------------
+	_ = c.JSON(http.StatusBadRequest, map[string]interface{}{
+		"message": apperrors.SomethingWentWrong,
 	})
-	if err != nil {
-		return
+}
+
+func validationMessage(fe validator.FieldError) string {
+	switch fe.Tag() {
+	case "required":
+		return "This field is required"
+	case "email":
+		return "Invalid email address"
+	case "min":
+		return "Must be at least " + fe.Param()
+	case "max":
+		return "Must be at most " + fe.Param()
+	case "gte":
+		return "Must be greater than or equal to " + fe.Param()
+	case "lte":
+		return "Must be less than or equal to " + fe.Param()
+	case "url":
+		return "The field value must be valid url"
+	case "unique":
+		return "Duplicate values are not allowed"
+	case "oneof":
+		return "Must be one of: " + strings.ReplaceAll(fe.Param(), " ", ", ")
+	default:
+		return "Invalid value"
 	}
 }
