@@ -56,8 +56,9 @@ func (h *ApplicationHandler) Create(c echo.Context) error {
 	}
 
 	app := &entities.Application{
-		Name:    req.Name,
-		GitRepo: req.GitRepo,
+		Name:      req.Name,
+		GitRepo:   req.GitRepo,
+		GitBranch: req.GitBranch,
 	}
 	if err := h.service.Create(app); err != nil {
 		return err
@@ -78,9 +79,10 @@ func (h *ApplicationHandler) Update(c echo.Context) error {
 	}
 
 	app := &entities.Application{
-		Id:      id,
-		Name:    req.Name,
-		GitRepo: req.GitRepo,
+		Id:        id,
+		Name:      req.Name,
+		GitRepo:   req.GitRepo,
+		GitBranch: req.GitBranch,
 	}
 	if err := h.service.Update(app); err != nil {
 		return err

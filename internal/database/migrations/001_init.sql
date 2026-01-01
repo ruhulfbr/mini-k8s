@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS applications (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,          -- Application name (unique)
     git_repo TEXT NOT NULL,             -- Git repository URL
+    git_branch TEXT NOT NULL,           -- Git repository branch
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
