@@ -1,59 +1,72 @@
 package services
 
 import (
-	"errors"
 	"time"
 
+	"github.com/ruhulfbr/mini-k8s/internal/apperrors"
 	"github.com/ruhulfbr/mini-k8s/internal/entities"
 	"github.com/ruhulfbr/mini-k8s/internal/repositories"
 )
 
 type ServiceService struct {
-	repo *repositories.ServiceRepository
+	repo    *repositories.ServiceRepository
+	appRepo *repositories.ApplicationRepository
 }
 
-func NewServiceService(r *repositories.ServiceRepository) *ServiceService {
-	return &ServiceService{repo: r}
+func NewServiceService(
+	r *repositories.ServiceRepository,
+	appRepo *repositories.ApplicationRepository,
+) *ServiceService {
+	return &ServiceService{repo: r, appRepo: appRepo}
 }
 
 func (s *ServiceService) ListByApplication(appID int64, serviceType *string) ([]entities.Service, error) {
-	if appID == 0 {
-		return nil, errors.New("invalid application id")
+	if s.appRepo.ExistsById(appID) == false {
+		return nil, apperrors.NoApplicationFound
 	}
+
 	return s.repo.ListByApplication(appID, serviceType)
 }
 
 func (s *ServiceService) Create(service *entities.Service) error {
-	if service.ApplicationID == 0 {
-		return errors.New("application_id is required")
+	if s.repo.ExistsByName(service.ApplicationId, service.Name) == true {
+		return apperrors.ServiceAlreadyExist
 	}
-	if service.Name == "" {
-		return errors.New("service name is required")
-	}
+
 	if service.Type == "" {
 		service.Type = entities.ServiceTypeHTTP
 	}
 	if service.Replicas <= 0 {
 		service.Replicas = 1
 	}
+
 	return s.repo.Create(service)
 }
 
 func (s *ServiceService) Update(service *entities.Service) error {
-	if service.ID == 0 {
-		return errors.New("invalid service id")
+	if s.repo.ExistsById(service.Id) == false {
+		return apperrors.NoServiceFound
 	}
+
 	return s.repo.Update(service)
 }
 
 func (s *ServiceService) Delete(id int64) error {
+	if s.repo.ExistsById(id) == false {
+		return apperrors.NoServiceFound
+	}
+
 	return s.repo.Delete(id)
 }
 
-func (s *ServiceService) MarkBuild(serviceID int64) error {
+func (s *ServiceService) MarkBuild(id int64) error {
+	if s.repo.ExistsById(id) == false {
+		return apperrors.NoServiceFound
+	}
+
 	now := time.Now()
 	return s.repo.Update(&entities.Service{
-		ID:          serviceID,
+		Id:          id,
 		LastBuildAt: &now,
 	})
 }

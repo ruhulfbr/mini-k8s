@@ -1,12 +1,13 @@
 package handlers
 
 import (
-	"net/http"
 	"strconv"
 
 	"github.com/labstack/echo/v4"
+	"github.com/ruhulfbr/mini-k8s/internal/apperrors"
 	"github.com/ruhulfbr/mini-k8s/internal/entities"
 	"github.com/ruhulfbr/mini-k8s/internal/http/requests"
+	"github.com/ruhulfbr/mini-k8s/internal/http/responses"
 	"github.com/ruhulfbr/mini-k8s/internal/services"
 )
 
@@ -27,24 +28,26 @@ func (h *ServiceHandler) ListByApplication(c echo.Context) error {
 	}
 
 	serviceList, err := h.service.ListByApplication(appID, filter)
+
 	if err != nil {
+
 		return err
 	}
 
-	return c.JSON(http.StatusOK, serviceList)
+	return responses.OK(c, serviceList)
 }
 
 func (h *ServiceHandler) Create(c echo.Context) error {
 	req := new(requests.CreateServiceRequest)
 	if err := c.Bind(req); err != nil {
-		return err
+		return apperrors.InvalidRequestBody
 	}
 	if err := c.Validate(req); err != nil {
 		return err
 	}
 
 	s := &entities.Service{
-		ApplicationID: req.ApplicationID,
+		ApplicationId: req.ApplicationID,
 		Name:          req.Name,
 		IP:            req.IP,
 		Port:          req.Port,
@@ -59,7 +62,8 @@ func (h *ServiceHandler) Create(c echo.Context) error {
 	if err := h.service.Create(s); err != nil {
 		return err
 	}
-	return c.JSON(http.StatusCreated, s)
+
+	return responses.Created(c, s)
 }
 
 func (h *ServiceHandler) Delete(c echo.Context) error {

@@ -10,8 +10,8 @@ var (
 		Message: "An application with this name already exists",
 	}
 
-	InvalidApplicationId = &AppError{
-		Code:    http.StatusUnprocessableEntity,
-		Message: "Invalid application Id",
+	NoApplicationFound = &AppError{
+		Code:    http.StatusNotFound,
+		Message: "No application found with this Id",
 	}
 )

@@ -13,8 +13,8 @@ const (
 )
 
 type Service struct {
-	ID            int64
-	ApplicationID int64
+	Id            int64
+	ApplicationId int64
 	Name          string
 	IP            string
 	Port          *int

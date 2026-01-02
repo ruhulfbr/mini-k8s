@@ -23,7 +23,7 @@ func InitServices(
 ) (*Services, error) {
 	sv := &Services{
 		ApplicationService:  NewApplicationService(repos.ApplicationRepository),
-		ServiceService:      NewServiceService(repos.ServiceRepository),
+		ServiceService:      NewServiceService(repos.ServiceRepository, repos.ApplicationRepository),
 		BuildHistoryService: NewBuildHistoryService(repos.BuildHistoryRepository),
 		PodService:          NewPodService(repos.PodRepository),
 		NodeService:         NewNodeService(repos.PodRepository, asynqClient, lb),
