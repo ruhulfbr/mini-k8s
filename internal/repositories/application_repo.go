@@ -59,12 +59,26 @@ func (r *ApplicationRepository) GetByID(id int64) (*entities.Application, error)
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, apperrors.NotFound
+			return nil, nil
 		}
 		return nil, err
 	}
 
 	return &a, err
+}
+
+func (r *ApplicationRepository) ExistsById(id int64) bool {
+	var a entities.Application
+	err := r.db.QueryRow(`
+		SELECT id
+		FROM applications WHERE id = ?`, id).
+		Scan(&a.Id)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return false
+	}
+
+	return true
 }
 
 func (r *ApplicationRepository) ExistsByName(name string) bool {
@@ -84,7 +98,7 @@ func (r *ApplicationRepository) ExistsByName(name string) bool {
 func (r *ApplicationRepository) Create(a *entities.Application) error {
 	return r.db.QueryRow(`
 		INSERT INTO applications (name, git_repo, git_branch)
-		VALUES (?, ?)
+		VALUES (?, ?, ?)
 		RETURNING id, created_at, updated_at`,
 		a.Name, a.GitRepo, a.GitBranch).
 		Scan(&a.Id, &a.CreatedAt, &a.UpdatedAt)
@@ -101,9 +115,9 @@ func (r *ApplicationRepository) Update(app *entities.Application) error {
 		return err
 	}
 
-	affected, _ := res.RowsAffected()
-	if affected == 0 {
-		return apperrors.NotFound
+	_, err = res.RowsAffected()
+	if err != nil {
+		return err
 	}
 
 	return nil

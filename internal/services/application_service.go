@@ -24,6 +24,10 @@ func (s *ApplicationService) GetByID(id int64) (*entities.Application, error) {
 		return nil, err
 	}
 
+	if app == nil {
+		return nil, apperrors.NotFound
+	}
+
 	return app, nil
 }
 
@@ -36,9 +40,17 @@ func (s *ApplicationService) Create(app *entities.Application) error {
 }
 
 func (s *ApplicationService) Update(app *entities.Application) error {
+	if s.repo.ExistsById(app.Id) == false {
+		return apperrors.NotFound
+	}
+
 	return s.repo.Update(app)
 }
 
 func (s *ApplicationService) Delete(id int64) error {
+	if s.repo.ExistsById(id) == false {
+		return apperrors.NotFound
+	}
+
 	return s.repo.Delete(id)
 }
