@@ -3,6 +3,7 @@ package repositories
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -25,11 +26,7 @@ func NewServiceRepository(db *sqlx.DB) *ServiceRepository {
 }
 
 func (r *ServiceRepository) ListByApplication(appID int64, serviceType *string) ([]entities.Service, error) {
-	query := `
-		SELECT id, application_id, name, ip, port, image_tag,
-		       context_path, replicas, resources, path, type, last_build_at
-		FROM services
-		WHERE application_id = ?`
+	query := `SELECT * FROM services WHERE application_id = ?`
 	args := []any{appID}
 
 	if serviceType != nil {
@@ -37,46 +34,12 @@ func (r *ServiceRepository) ListByApplication(appID int64, serviceType *string) 
 		args = append(args, *serviceType)
 	}
 
-	rows, err := r.db.Query(query, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
 	var services []entities.Service
-	for rows.Next() {
-		var s entities.Service
-		var port sql.NullInt64
-		var lastBuild sql.NullTime
+	if err := r.db.Select(&services, query, args...); err != nil {
 
-		if err := rows.Scan(
-			&s.Id,
-			&s.ApplicationId,
-			&s.Name,
-			&s.IP,
-			&port,
-			&s.ImageTag,
-			&s.ContextPath,
-			&s.Replicas,
-			&s.Resources,
-			&s.Path,
-			&s.Type,
-			&lastBuild,
-		); err != nil {
-			return nil, err
-		}
+		fmt.Println(err)
 
-		if port.Valid {
-			p := int(port.Int64)
-			s.Port = &p
-		}
-
-		if lastBuild.Valid {
-			t := lastBuild.Time
-			s.LastBuildAt = &t
-		}
-
-		services = append(services, s)
+		return nil, err
 	}
 
 	return services, nil
@@ -84,10 +47,7 @@ func (r *ServiceRepository) ListByApplication(appID int64, serviceType *string) 
 
 func (r *ServiceRepository) ExistsById(id int64) bool {
 	var a entities.Service
-	err := r.db.QueryRow(`
-		SELECT id
-		FROM services WHERE id = ?`, id).
-		Scan(&a.Id)
+	err := r.db.Get(&a, `SELECT id FROM services WHERE id = ?`, id)
 
 	if errors.Is(err, sql.ErrNoRows) {
 		return false
@@ -97,11 +57,19 @@ func (r *ServiceRepository) ExistsById(id int64) bool {
 }
 
 func (r *ServiceRepository) ExistsByName(appId int64, name string) bool {
-	var a entities.Service
-	err := r.db.QueryRow(`
-		SELECT id
-		FROM services WHERE application_i = ? and name = ?`, appId, name).
-		Scan(&a.Id)
+	var s entities.Service
+	err := r.db.Get(&s, `SELECT id FROM services WHERE application_id = ? and name = ?`, appId, name)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return false
+	}
+
+	return true
+}
+
+func (r *ServiceRepository) ExistsByNameExceptId(appId int64, name string, id int64) bool {
+	var s entities.Service
+	err := r.db.Get(&s, `SELECT id FROM services WHERE application_i = ? and name = ? and id != ?`, appId, name, id)
 
 	if errors.Is(err, sql.ErrNoRows) {
 		return false
@@ -111,17 +79,12 @@ func (r *ServiceRepository) ExistsByName(appId int64, name string) bool {
 }
 
 func (r *ServiceRepository) Create(s *entities.Service) error {
-	var lastBuild sql.NullTime
-	if s.LastBuildAt != nil {
-		lastBuild = sql.NullTime{Time: *s.LastBuildAt, Valid: true}
-	}
-
 	return r.db.QueryRow(`
 		INSERT INTO services (
 			application_id, name, ip, port, image_tag,
-			context_path, replicas, resources, path, type, last_build_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		RETURNING id`,
+			context_path, replicas, resources, path, type
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		RETURNING id, created_at, updated_at`,
 		s.ApplicationId,
 		s.Name,
 		s.IP,
@@ -132,12 +95,11 @@ func (r *ServiceRepository) Create(s *entities.Service) error {
 		s.Resources,
 		s.Path,
 		s.Type,
-		lastBuild,
-	).Scan(&s.Id)
+	).Scan(&s.Id, &s.CreatedAt, &s.UpdatedAt)
 }
 
 func (r *ServiceRepository) Update(s *entities.Service) error {
-	_, err := r.db.Exec(`
+	res, err := r.db.Exec(`
 		UPDATE services SET
 			name = ?,
 			ip = ?,
@@ -148,7 +110,6 @@ func (r *ServiceRepository) Update(s *entities.Service) error {
 			resources = ?,
 			path = ?,
 			type = ?,
-			last_build_at = ?
 		WHERE id = ?`,
 		s.Name,
 		s.IP,
@@ -159,23 +120,52 @@ func (r *ServiceRepository) Update(s *entities.Service) error {
 		s.Resources,
 		s.Path,
 		s.Type,
-		s.LastBuildAt,
 		s.Id,
 	)
-	return err
+
+	if err != nil {
+		return err
+	}
+
+	_, err = res.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (r *ServiceRepository) Delete(id int64) error {
-	_, err := r.db.Exec(`DELETE FROM services WHERE id = ?`, id)
-	return err
+	res, err := r.db.Exec(`DELETE FROM services WHERE id = ?`, id)
+
+	if err != nil {
+		return err
+	}
+
+	_, err = res.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (r *ServiceRepository) TouchLastBuild(serviceID int64) error {
-	_, err := r.db.Exec(`
+func (r *ServiceRepository) TouchLastBuild(id int64) error {
+	res, err := r.db.Exec(`
 		UPDATE services
 		SET last_build_at = ?
 		WHERE id = ?`,
-		time.Now(), serviceID,
+		time.Now(), id,
 	)
-	return err
+
+	if err != nil {
+		return err
+	}
+
+	_, err = res.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

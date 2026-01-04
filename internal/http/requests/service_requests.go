@@ -4,7 +4,7 @@ type CreateServiceRequest struct {
 	ApplicationID int64  `json:"application_id" validate:"required"`
 	Name          string `json:"name" validate:"required"`
 	IP            string `json:"ip" validate:"required,ip"`
-	Port          *int   `json:"port"`
+	Port          int    `json:"port"`
 	ImageTag      string `json:"image_tag" validate:"required"`
 	ContextPath   string `json:"context_path" validate:"required"`
 	Replicas      int    `json:"replicas" validate:"gte=1"`

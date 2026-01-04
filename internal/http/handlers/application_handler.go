@@ -65,9 +65,6 @@ func (h *ApplicationHandler) Create(c echo.Context) error {
 		GitBranch: req.GitBranch,
 	}
 	if err := h.service.Create(app); err != nil {
-
-		fmt.Println(err)
-
 		return err
 	}
 

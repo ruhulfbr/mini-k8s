@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/labstack/echo/v4"
@@ -31,6 +32,7 @@ func (h *ServiceHandler) ListByApplication(c echo.Context) error {
 
 	if err != nil {
 
+		fmt.Println(err)
 		return err
 	}
 
@@ -68,5 +70,11 @@ func (h *ServiceHandler) Create(c echo.Context) error {
 
 func (h *ServiceHandler) Delete(c echo.Context) error {
 	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
-	return h.service.Delete(id)
+	err := h.service.Delete(id)
+
+	if err != nil {
+		return err
+	}
+
+	return responses.NoContent(c)
 }

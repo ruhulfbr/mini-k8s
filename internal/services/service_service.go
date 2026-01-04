@@ -1,8 +1,6 @@
 package services
 
 import (
-	"time"
-
 	"github.com/ruhulfbr/mini-k8s/internal/appErrors"
 	"github.com/ruhulfbr/mini-k8s/internal/entities"
 	"github.com/ruhulfbr/mini-k8s/internal/repositories"
@@ -29,10 +27,14 @@ func (s *ServiceService) ListByApplication(appID int64, serviceType *string) ([]
 }
 
 func (s *ServiceService) Create(service *entities.Service) error {
-	if s.repo.ExistsByName(service.ApplicationId, service.Name) == true {
-		return appErrors.ServiceAlreadyExist
+	if s.appRepo.ExistsById(service.ApplicationId) == false {
+		return appErrors.NoApplicationFound
 	}
 
+	if s.repo.ExistsByName(service.ApplicationId, service.Name) {
+		return appErrors.ServiceAlreadyExist
+	}
+	
 	if service.Type == "" {
 		service.Type = entities.ServiceTypeHTTP
 	}
@@ -46,6 +48,10 @@ func (s *ServiceService) Create(service *entities.Service) error {
 func (s *ServiceService) Update(service *entities.Service) error {
 	if s.repo.ExistsById(service.Id) == false {
 		return appErrors.NoServiceFound
+	}
+
+	if s.repo.ExistsByNameExceptId(service.ApplicationId, service.Name, service.Id) {
+		return appErrors.ServiceAlreadyExist
 	}
 
 	return s.repo.Update(service)
@@ -64,9 +70,5 @@ func (s *ServiceService) MarkBuild(id int64) error {
 		return appErrors.NoServiceFound
 	}
 
-	now := time.Now()
-	return s.repo.Update(&entities.Service{
-		Id:          id,
-		LastBuildAt: &now,
-	})
+	return s.repo.TouchLastBuild(id)
 }
