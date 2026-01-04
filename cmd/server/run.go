@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os/signal"
 	"syscall"
@@ -9,11 +10,18 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/ruhulfbr/mini-k8s/internal/config"
 	"github.com/ruhulfbr/mini-k8s/internal/database"
+	"github.com/ruhulfbr/mini-k8s/internal/logger"
 )
 
 func Run() error {
 	// Load application configuration once
 	cfg := config.Load()
+
+	loggerCleanup, err := initLogger(cfg)
+	if err != nil {
+		return err
+	}
+	defer loggerCleanup()
 
 	// Root context cancelled on SIGINT / SIGTERM
 	ctx, stop := signal.NotifyContext(
@@ -67,4 +75,11 @@ func Run() error {
 	// - For graceful shutdown, pass ctx to those components
 
 	return nil
+}
+
+func initLogger(cfg *config.Config) (func(), error) {
+	if err := logger.Init(cfg.Logger); err != nil {
+		return nil, fmt.Errorf("init logger: %w", err)
+	}
+	return func() {}, nil
 }

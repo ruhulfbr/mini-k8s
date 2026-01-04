@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 	"github.com/labstack/echo/v4"
 	"github.com/ruhulfbr/mini-k8s/internal/config"
@@ -8,6 +9,7 @@ import (
 	"github.com/ruhulfbr/mini-k8s/internal/http/handlers"
 	"github.com/ruhulfbr/mini-k8s/internal/http/middleware"
 	"github.com/ruhulfbr/mini-k8s/internal/loadBalancer"
+	"github.com/ruhulfbr/mini-k8s/internal/logger"
 )
 
 func ConfigureRoutes(
@@ -19,7 +21,10 @@ func ConfigureRoutes(
 ) {
 	appHandlers := handlers.InitHandlers(cfg, ds, asynqClient, lb)
 
+	tracer := logger.NewTraceStarter(uuid.NewV7)
+
 	engine.HTTPErrorHandler = middleware.EchoHTTPErrorHandler
+	engine.Use(middleware.NewRequestLogger(tracer))
 
 	api := engine.Group("/api")
 

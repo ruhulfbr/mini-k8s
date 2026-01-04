@@ -4,3 +4,4 @@ identifier.sqlite
 .idea
 .DS_Store
 main
+logs/*

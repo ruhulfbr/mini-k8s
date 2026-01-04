@@ -19,6 +19,7 @@ type Config struct {
 	Redis  RedisConfig
 	SQLite SQLiteConfig
 	Docker DockerConfig
+	Logger LogConfig
 }
 
 type AppConfig struct {
@@ -43,6 +44,19 @@ type SQLiteConfig struct {
 type DockerConfig struct {
 	ContainerNamePref string `env:"CONTAINER_NAME_PREFIX"`
 	ImageTagPrefix    string `env:"IMAGE_TAG_PREFIX"`
+}
+
+type LogConfig struct {
+	Application string `env:"LOG_APPLICATION"`
+
+	// File represents path to file where store logs. Used [os.Stdout] if empty.
+	File string `env:"LOG_FILE"`
+
+	// One of: "DEBUG", "INFO", "WARN", "ERROR". Default: "DEBUG".
+	Level string `env:"LOG_LEVEL" envDefault:"DEBUG"`
+
+	// Add source code position to messages.
+	AddSource bool `env:"LOG_ADD_SOURCE"`
 }
 
 func Load() *Config {
