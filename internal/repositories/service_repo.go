@@ -5,11 +5,12 @@ import (
 	"errors"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/ruhulfbr/mini-k8s/internal/entities"
 )
 
 type ServiceRepository struct {
-	db *sql.DB
+	db *sqlx.DB
 }
 
 type ServiceRepositoryInterface interface {
@@ -19,7 +20,7 @@ type ServiceRepositoryInterface interface {
 	Delete(id int64) error
 }
 
-func NewServiceRepository(db *sql.DB) *ServiceRepository {
+func NewServiceRepository(db *sqlx.DB) *ServiceRepository {
 	return &ServiceRepository{db: db}
 }
 

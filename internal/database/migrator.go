@@ -1,17 +1,18 @@
 package database
 
 import (
-	"database/sql"
 	"embed"
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/jmoiron/sqlx"
 )
 
 //go:embed migrations/*.sql
 var migrationFiles embed.FS
 
-func RunMigrations(db *sql.DB) error {
+func RunMigrations(db *sqlx.DB) error {
 	if err := ensureMigrationsTable(db); err != nil {
 		return err
 	}
@@ -50,7 +51,7 @@ func RunMigrations(db *sql.DB) error {
 	return nil
 }
 
-func ensureMigrationsTable(db *sql.DB) error {
+func ensureMigrationsTable(db *sqlx.DB) error {
 	_, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS schema_migrations (
 			version TEXT PRIMARY KEY,
@@ -60,7 +61,7 @@ func ensureMigrationsTable(db *sql.DB) error {
 	return err
 }
 
-func appliedMigrations(db *sql.DB) (map[string]bool, error) {
+func appliedMigrations(db *sqlx.DB) (map[string]bool, error) {
 	rows, err := db.Query(`SELECT version FROM schema_migrations`)
 	if err != nil {
 		return nil, err
@@ -78,7 +79,7 @@ func appliedMigrations(db *sql.DB) (map[string]bool, error) {
 	return applied, nil
 }
 
-func applyMigration(db *sql.DB, version, sql string) error {
+func applyMigration(db *sqlx.DB, version, sql string) error {
 	tx, err := db.Begin()
 	if err != nil {
 		return err

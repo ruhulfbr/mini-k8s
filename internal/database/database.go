@@ -1,19 +1,19 @@
 package database
 
 import (
-	"database/sql"
 	"log"
 
 	_ "github.com/glebarez/go-sqlite"
+	"github.com/jmoiron/sqlx"
 	"github.com/ruhulfbr/mini-k8s/internal/config"
 )
 
 type Database struct {
-	DB *sql.DB
+	DB *sqlx.DB
 }
 
 func NewDatastore(cfg *config.Config) *Database {
-	db, err := sql.Open("sqlite", cfg.SQLite.DataSource)
+	db, err := sqlx.Open("sqlite", cfg.SQLite.DataSource)
 	if err != nil {
 		log.Fatalf("failed to open BadgerDB: %v", err)
 	}

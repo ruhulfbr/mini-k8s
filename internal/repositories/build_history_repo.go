@@ -3,11 +3,12 @@ package repositories
 import (
 	"database/sql"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/ruhulfbr/mini-k8s/internal/entities"
 )
 
 type BuildHistoryRepository struct {
-	db *sql.DB
+	db *sqlx.DB
 }
 
 type BuildHistoryRepositoryInterface interface {
@@ -18,7 +19,7 @@ type BuildHistoryRepositoryInterface interface {
 	Delete(id int64) error
 }
 
-func NewBuildHistoryRepository(db *sql.DB) *BuildHistoryRepository {
+func NewBuildHistoryRepository(db *sqlx.DB) *BuildHistoryRepository {
 	return &BuildHistoryRepository{db: db}
 }
 

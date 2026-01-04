@@ -1,10 +1,11 @@
 package handlers
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/labstack/echo/v4"
-	"github.com/ruhulfbr/mini-k8s/internal/apperrors"
+	"github.com/ruhulfbr/mini-k8s/internal/appErrors"
 	"github.com/ruhulfbr/mini-k8s/internal/entities"
 	"github.com/ruhulfbr/mini-k8s/internal/http/requests"
 	"github.com/ruhulfbr/mini-k8s/internal/http/responses"
@@ -28,6 +29,9 @@ func (h *ApplicationHandler) List(c echo.Context) error {
 
 	apps, err := h.service.List(filter)
 	if err != nil {
+
+		fmt.Println(err)
+
 		return err
 	}
 
@@ -48,7 +52,7 @@ func (h *ApplicationHandler) Show(c echo.Context) error {
 func (h *ApplicationHandler) Create(c echo.Context) error {
 	req := new(requests.CreateApplicationRequest)
 	if err := c.Bind(req); err != nil {
-		return apperrors.InvalidRequestBody
+		return appErrors.InvalidRequestBody
 	}
 
 	if err := c.Validate(req); err != nil {
@@ -61,6 +65,9 @@ func (h *ApplicationHandler) Create(c echo.Context) error {
 		GitBranch: req.GitBranch,
 	}
 	if err := h.service.Create(app); err != nil {
+
+		fmt.Println(err)
+
 		return err
 	}
 
@@ -72,7 +79,7 @@ func (h *ApplicationHandler) Update(c echo.Context) error {
 
 	req := new(requests.UpdateApplicationRequest)
 	if err := c.Bind(req); err != nil {
-		return apperrors.InvalidRequestBody
+		return appErrors.InvalidRequestBody
 	}
 	if err := c.Validate(req); err != nil {
 		return err

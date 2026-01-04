@@ -1,7 +1,7 @@
 package repositories
 
 import (
-	"database/sql"
+	"github.com/jmoiron/sqlx"
 )
 
 type Repositories struct {
@@ -11,7 +11,7 @@ type Repositories struct {
 	PodRepository          *PodRepository
 }
 
-func InitRepositories(DB *sql.DB) *Repositories {
+func InitRepositories(DB *sqlx.DB) *Repositories {
 	return &Repositories{
 		ApplicationRepository:  NewApplicationRepository(DB),
 		ServiceRepository:      NewServiceRepository(DB),

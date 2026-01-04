@@ -3,7 +3,7 @@ package services
 import (
 	"github.com/hibiken/asynq"
 	"github.com/ruhulfbr/mini-k8s/internal/config"
-	"github.com/ruhulfbr/mini-k8s/internal/loadbalancer"
+	"github.com/ruhulfbr/mini-k8s/internal/loadBalancer"
 	"github.com/ruhulfbr/mini-k8s/internal/repositories"
 )
 
@@ -19,7 +19,7 @@ func InitServices(
 	repos *repositories.Repositories,
 	cfg *config.Config,
 	asynqClient *asynq.Client,
-	lb *loadbalancer.LoadBalancer,
+	lb *loadBalancer.LoadBalancer,
 ) (*Services, error) {
 	sv := &Services{
 		ApplicationService:  NewApplicationService(repos.ApplicationRepository),

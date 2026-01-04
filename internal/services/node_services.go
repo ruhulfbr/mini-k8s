@@ -6,20 +6,20 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/ruhulfbr/mini-k8s/internal/entities"
 	"github.com/ruhulfbr/mini-k8s/internal/http/requests"
-	"github.com/ruhulfbr/mini-k8s/internal/loadbalancer"
+	"github.com/ruhulfbr/mini-k8s/internal/loadBalancer"
 	"github.com/ruhulfbr/mini-k8s/internal/repositories"
 )
 
 type NodeService struct {
 	repo  *repositories.PodRepository
 	queue *asynq.Client
-	lb    *loadbalancer.LoadBalancer
+	lb    *loadBalancer.LoadBalancer
 }
 
 func NewNodeService(
 	repo *repositories.PodRepository,
 	queue *asynq.Client,
-	lb *loadbalancer.LoadBalancer,
+	lb *loadBalancer.LoadBalancer,
 ) *NodeService {
 	return &NodeService{repo: repo, queue: queue, lb: lb}
 }

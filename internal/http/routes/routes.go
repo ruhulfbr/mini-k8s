@@ -7,7 +7,7 @@ import (
 	"github.com/ruhulfbr/mini-k8s/internal/database"
 	"github.com/ruhulfbr/mini-k8s/internal/http/handlers"
 	"github.com/ruhulfbr/mini-k8s/internal/http/middleware"
-	"github.com/ruhulfbr/mini-k8s/internal/loadbalancer"
+	"github.com/ruhulfbr/mini-k8s/internal/loadBalancer"
 )
 
 func ConfigureRoutes(
@@ -15,7 +15,7 @@ func ConfigureRoutes(
 	cfg *config.Config,
 	ds *database.Database,
 	asynqClient *asynq.Client,
-	lb *loadbalancer.LoadBalancer,
+	lb *loadBalancer.LoadBalancer,
 ) {
 	appHandlers := handlers.InitHandlers(cfg, ds, asynqClient, lb)
 

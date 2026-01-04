@@ -3,7 +3,7 @@ package services
 import (
 	"time"
 
-	"github.com/ruhulfbr/mini-k8s/internal/apperrors"
+	"github.com/ruhulfbr/mini-k8s/internal/appErrors"
 	"github.com/ruhulfbr/mini-k8s/internal/entities"
 	"github.com/ruhulfbr/mini-k8s/internal/repositories"
 )
@@ -22,7 +22,7 @@ func NewServiceService(
 
 func (s *ServiceService) ListByApplication(appID int64, serviceType *string) ([]entities.Service, error) {
 	if s.appRepo.ExistsById(appID) == false {
-		return nil, apperrors.NoApplicationFound
+		return nil, appErrors.NoApplicationFound
 	}
 
 	return s.repo.ListByApplication(appID, serviceType)
@@ -30,7 +30,7 @@ func (s *ServiceService) ListByApplication(appID int64, serviceType *string) ([]
 
 func (s *ServiceService) Create(service *entities.Service) error {
 	if s.repo.ExistsByName(service.ApplicationId, service.Name) == true {
-		return apperrors.ServiceAlreadyExist
+		return appErrors.ServiceAlreadyExist
 	}
 
 	if service.Type == "" {
@@ -45,7 +45,7 @@ func (s *ServiceService) Create(service *entities.Service) error {
 
 func (s *ServiceService) Update(service *entities.Service) error {
 	if s.repo.ExistsById(service.Id) == false {
-		return apperrors.NoServiceFound
+		return appErrors.NoServiceFound
 	}
 
 	return s.repo.Update(service)
@@ -53,7 +53,7 @@ func (s *ServiceService) Update(service *entities.Service) error {
 
 func (s *ServiceService) Delete(id int64) error {
 	if s.repo.ExistsById(id) == false {
-		return apperrors.NoServiceFound
+		return appErrors.NoServiceFound
 	}
 
 	return s.repo.Delete(id)
@@ -61,7 +61,7 @@ func (s *ServiceService) Delete(id int64) error {
 
 func (s *ServiceService) MarkBuild(id int64) error {
 	if s.repo.ExistsById(id) == false {
-		return apperrors.NoServiceFound
+		return appErrors.NoServiceFound
 	}
 
 	now := time.Now()

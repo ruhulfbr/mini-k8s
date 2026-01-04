@@ -1,7 +1,7 @@
 package services
 
 import (
-	"github.com/ruhulfbr/mini-k8s/internal/apperrors"
+	"github.com/ruhulfbr/mini-k8s/internal/appErrors"
 	"github.com/ruhulfbr/mini-k8s/internal/entities"
 	"github.com/ruhulfbr/mini-k8s/internal/repositories"
 )
@@ -25,7 +25,7 @@ func (s *ApplicationService) GetByID(id int64) (*entities.Application, error) {
 	}
 
 	if app == nil {
-		return nil, apperrors.NotFound
+		return nil, appErrors.NotFound
 	}
 
 	return app, nil
@@ -33,7 +33,7 @@ func (s *ApplicationService) GetByID(id int64) (*entities.Application, error) {
 
 func (s *ApplicationService) Create(app *entities.Application) error {
 	if s.repo.ExistsByName(app.Name) {
-		return apperrors.ApplicationAlreadyExist
+		return appErrors.ApplicationAlreadyExist
 	}
 
 	return s.repo.Create(app)
@@ -41,7 +41,11 @@ func (s *ApplicationService) Create(app *entities.Application) error {
 
 func (s *ApplicationService) Update(app *entities.Application) error {
 	if s.repo.ExistsById(app.Id) == false {
-		return apperrors.NotFound
+		return appErrors.NotFound
+	}
+
+	if s.repo.ExistsByNameExceptId(app.Name, app.Id) {
+		return appErrors.ApplicationAlreadyExist
 	}
 
 	return s.repo.Update(app)
@@ -49,7 +53,7 @@ func (s *ApplicationService) Update(app *entities.Application) error {
 
 func (s *ApplicationService) Delete(id int64) error {
 	if s.repo.ExistsById(id) == false {
-		return apperrors.NotFound
+		return appErrors.NotFound
 	}
 
 	return s.repo.Delete(id)

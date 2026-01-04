@@ -4,12 +4,12 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/ruhulfbr/mini-k8s/internal/apperrors"
+	"github.com/jmoiron/sqlx"
 	"github.com/ruhulfbr/mini-k8s/internal/entities"
 )
 
 type ApplicationRepository struct {
-	db *sql.DB
+	db *sqlx.DB
 }
 
 type ApplicationRepositoryInterface interface {
@@ -20,12 +20,12 @@ type ApplicationRepositoryInterface interface {
 	Delete(id int64) error
 }
 
-func NewApplicationRepository(db *sql.DB) *ApplicationRepository {
+func NewApplicationRepository(db *sqlx.DB) *ApplicationRepository {
 	return &ApplicationRepository{db: db}
 }
 
 func (r *ApplicationRepository) List(name *string) ([]entities.Application, error) {
-	query := `SELECT id, name, git_repo, git_branch, created_at, updated_at FROM applications`
+	query := `SELECT * FROM applications`
 	args := []any{}
 
 	if name != nil {
@@ -33,29 +33,17 @@ func (r *ApplicationRepository) List(name *string) ([]entities.Application, erro
 		args = append(args, "%"+*name+"%")
 	}
 
-	rows, err := r.db.Query(query, args...)
-	if err != nil {
+	var apps []entities.Application
+	if err := r.db.Select(&apps, query, args...); err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	var apps []entities.Application
-	for rows.Next() {
-		var a entities.Application
-		if err := rows.Scan(&a.Id, &a.Name, &a.GitRepo, &a.GitBranch, &a.CreatedAt, &a.UpdatedAt); err != nil {
-			return nil, err
-		}
-		apps = append(apps, a)
-	}
 	return apps, nil
 }
 
 func (r *ApplicationRepository) GetByID(id int64) (*entities.Application, error) {
 	var a entities.Application
-	err := r.db.QueryRow(`
-		SELECT id, name, git_repo, git_branch, created_at, updated_at
-		FROM applications WHERE id = ?`, id).
-		Scan(&a.Id, &a.Name, &a.GitRepo, &a.GitBranch, &a.CreatedAt, &a.UpdatedAt)
+	err := r.db.Get(&a, `SELECT * FROM applications WHERE id = ?`, id)
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -69,10 +57,7 @@ func (r *ApplicationRepository) GetByID(id int64) (*entities.Application, error)
 
 func (r *ApplicationRepository) ExistsById(id int64) bool {
 	var a entities.Application
-	err := r.db.QueryRow(`
-		SELECT id
-		FROM applications WHERE id = ?`, id).
-		Scan(&a.Id)
+	err := r.db.Get(&a, `SELECT id FROM applications WHERE id = ?`, id)
 
 	if errors.Is(err, sql.ErrNoRows) {
 		return false
@@ -83,10 +68,18 @@ func (r *ApplicationRepository) ExistsById(id int64) bool {
 
 func (r *ApplicationRepository) ExistsByName(name string) bool {
 	var a entities.Application
-	err := r.db.QueryRow(`
-		SELECT id
-		FROM applications WHERE name = ?`, name).
-		Scan(&a.Id)
+	err := r.db.Get(&a, `SELECT id FROM applications WHERE name = ?`, name)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return false
+	}
+
+	return true
+}
+
+func (r *ApplicationRepository) ExistsByNameExceptId(name string, id int64) bool {
+	var a entities.Application
+	err := r.db.Get(&a, `SELECT id FROM applications WHERE name = ? and id != ?`, name, id)
 
 	if errors.Is(err, sql.ErrNoRows) {
 		return false
@@ -96,7 +89,7 @@ func (r *ApplicationRepository) ExistsByName(name string) bool {
 }
 
 func (r *ApplicationRepository) Create(a *entities.Application) error {
-	return r.db.QueryRow(`
+	return r.db.QueryRowx(`
 		INSERT INTO applications (name, git_repo, git_branch)
 		VALUES (?, ?, ?)
 		RETURNING id, created_at, updated_at`,
@@ -130,9 +123,9 @@ func (r *ApplicationRepository) Delete(id int64) error {
 		return err
 	}
 
-	affected, _ := res.RowsAffected()
-	if affected == 0 {
-		return apperrors.NotFound
+	_, err = res.RowsAffected()
+	if err != nil {
+		return err
 	}
 
 	return nil

@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
-	"github.com/ruhulfbr/mini-k8s/internal/apperrors"
+	"github.com/ruhulfbr/mini-k8s/internal/appErrors"
 )
 
 type FieldError struct {
@@ -36,7 +36,7 @@ func EchoHTTPErrorHandler(err error, c echo.Context) {
 	}
 
 	// App errors
-	var appErr *apperrors.AppError
+	var appErr *appErrors.AppError
 	if errors.As(err, &appErr) {
 		_ = c.JSON(appErr.Code, map[string]interface{}{
 			"message": appErr.Message,
@@ -59,7 +59,7 @@ func EchoHTTPErrorHandler(err error, c echo.Context) {
 	// 3. Fallback: Bad Request
 	// --------------------------------------------------
 	_ = c.JSON(http.StatusBadRequest, map[string]interface{}{
-		"message": apperrors.SomethingWentWrong,
+		"message": appErrors.SomethingWentWrong,
 	})
 }
 

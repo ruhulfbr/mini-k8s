@@ -4,7 +4,7 @@ import (
 	"strconv"
 
 	"github.com/labstack/echo/v4"
-	"github.com/ruhulfbr/mini-k8s/internal/apperrors"
+	"github.com/ruhulfbr/mini-k8s/internal/appErrors"
 	"github.com/ruhulfbr/mini-k8s/internal/entities"
 	"github.com/ruhulfbr/mini-k8s/internal/http/requests"
 	"github.com/ruhulfbr/mini-k8s/internal/http/responses"
@@ -40,7 +40,7 @@ func (h *ServiceHandler) ListByApplication(c echo.Context) error {
 func (h *ServiceHandler) Create(c echo.Context) error {
 	req := new(requests.CreateServiceRequest)
 	if err := c.Bind(req); err != nil {
-		return apperrors.InvalidRequestBody
+		return appErrors.InvalidRequestBody
 	}
 	if err := c.Validate(req); err != nil {
 		return err

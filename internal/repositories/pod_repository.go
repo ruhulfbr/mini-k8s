@@ -1,13 +1,12 @@
 package repositories
 
 import (
-	"database/sql"
-
+	"github.com/jmoiron/sqlx"
 	"github.com/ruhulfbr/mini-k8s/internal/entities"
 )
 
 type PodRepository struct {
-	db *sql.DB
+	db *sqlx.DB
 }
 
 type PodRepositoryInterface interface {
@@ -17,7 +16,7 @@ type PodRepositoryInterface interface {
 	Delete(id int64) error
 }
 
-func NewPodRepository(db *sql.DB) *PodRepository {
+func NewPodRepository(db *sqlx.DB) *PodRepository {
 	return &PodRepository{db: db}
 }
 
