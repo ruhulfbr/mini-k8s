@@ -9,7 +9,7 @@ import (
 	"github.com/ruhulfbr/mini-k8s/internal/http/handlers"
 	"github.com/ruhulfbr/mini-k8s/internal/http/middleware"
 	"github.com/ruhulfbr/mini-k8s/internal/loadBalancer"
-	"github.com/ruhulfbr/mini-k8s/internal/logger"
+	"github.com/ruhulfbr/mini-k8s/internal/logger/slog"
 )
 
 func ConfigureRoutes(
@@ -21,7 +21,7 @@ func ConfigureRoutes(
 ) {
 	appHandlers := handlers.InitHandlers(cfg, ds, asynqClient, lb)
 
-	tracer := logger.NewTraceStarter(uuid.NewV7)
+	tracer := slog.NewTraceStarter(uuid.NewV7)
 
 	engine.HTTPErrorHandler = middleware.EchoHTTPErrorHandler
 	engine.Use(middleware.NewRequestLogger(tracer))

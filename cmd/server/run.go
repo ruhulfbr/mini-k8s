@@ -10,7 +10,7 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/ruhulfbr/mini-k8s/internal/config"
 	"github.com/ruhulfbr/mini-k8s/internal/database"
-	"github.com/ruhulfbr/mini-k8s/internal/logger"
+	"github.com/ruhulfbr/mini-k8s/internal/logger/slog"
 )
 
 func Run() error {
@@ -78,7 +78,7 @@ func Run() error {
 }
 
 func initLogger(cfg *config.Config) (func(), error) {
-	if err := logger.Init(cfg.Logger); err != nil {
+	if err := slog.Init(cfg.Logger); err != nil {
 		return nil, fmt.Errorf("init logger: %w", err)
 	}
 	return func() {}, nil
