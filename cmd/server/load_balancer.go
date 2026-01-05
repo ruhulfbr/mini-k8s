@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/ruhulfbr/mini-k8s/internal/database"
+	"github.com/ruhulfbr/mini-k8s/internal/infrastructure/database"
 	"github.com/ruhulfbr/mini-k8s/internal/loadBalancer"
 	"github.com/ruhulfbr/mini-k8s/internal/repositories"
 )

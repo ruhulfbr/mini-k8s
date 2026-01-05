@@ -2,7 +2,7 @@ package server
 
 import (
 	"github.com/ruhulfbr/mini-k8s/internal/config"
-	"github.com/ruhulfbr/mini-k8s/internal/database"
+	"github.com/ruhulfbr/mini-k8s/internal/infrastructure/database"
 	"github.com/ruhulfbr/mini-k8s/internal/repositories"
 	"github.com/ruhulfbr/mini-k8s/internal/worker"
 )

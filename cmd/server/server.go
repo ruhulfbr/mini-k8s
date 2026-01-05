@@ -14,9 +14,9 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/labstack/echo/v4"
 	"github.com/ruhulfbr/mini-k8s/internal/config"
-	"github.com/ruhulfbr/mini-k8s/internal/database"
 	"github.com/ruhulfbr/mini-k8s/internal/http/routes"
 	"github.com/ruhulfbr/mini-k8s/internal/http/validator"
+	"github.com/ruhulfbr/mini-k8s/internal/infrastructure/database"
 	"github.com/ruhulfbr/mini-k8s/internal/loadBalancer"
 )
 

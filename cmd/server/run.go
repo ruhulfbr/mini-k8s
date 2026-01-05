@@ -9,8 +9,8 @@ import (
 
 	"github.com/hibiken/asynq"
 	"github.com/ruhulfbr/mini-k8s/internal/config"
-	"github.com/ruhulfbr/mini-k8s/internal/database"
-	"github.com/ruhulfbr/mini-k8s/internal/logger/slog"
+	"github.com/ruhulfbr/mini-k8s/internal/infrastructure/database"
+	"github.com/ruhulfbr/mini-k8s/internal/infrastructure/logger/slog"
 )
 
 func Run() error {

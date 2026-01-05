@@ -4,7 +4,6 @@ import (
 	"strconv"
 
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/gommon/log"
 	"github.com/ruhulfbr/mini-k8s/internal/appErrors"
 	"github.com/ruhulfbr/mini-k8s/internal/entities"
 	"github.com/ruhulfbr/mini-k8s/internal/http/requests"
@@ -31,8 +30,6 @@ func (h *ApplicationHandler) List(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-
-	log.Info("user logged in", "user_id", 123)
 
 	return responses.OK(c, apps)
 }

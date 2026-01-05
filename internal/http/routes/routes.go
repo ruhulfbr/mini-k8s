@@ -5,11 +5,11 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/labstack/echo/v4"
 	"github.com/ruhulfbr/mini-k8s/internal/config"
-	"github.com/ruhulfbr/mini-k8s/internal/database"
 	"github.com/ruhulfbr/mini-k8s/internal/http/handlers"
 	"github.com/ruhulfbr/mini-k8s/internal/http/middleware"
+	"github.com/ruhulfbr/mini-k8s/internal/infrastructure/database"
+	"github.com/ruhulfbr/mini-k8s/internal/infrastructure/logger/slog"
 	"github.com/ruhulfbr/mini-k8s/internal/loadBalancer"
-	"github.com/ruhulfbr/mini-k8s/internal/logger/slog"
 )
 
 func ConfigureRoutes(
