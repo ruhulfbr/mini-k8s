@@ -3,6 +3,7 @@ package services
 import (
 	"github.com/ruhulfbr/mini-k8s/internal/appErrors"
 	"github.com/ruhulfbr/mini-k8s/internal/entities"
+	"github.com/ruhulfbr/mini-k8s/internal/pkg/gitutils"
 	"github.com/ruhulfbr/mini-k8s/internal/repositories"
 )
 
@@ -36,7 +37,21 @@ func (s *ApplicationService) Create(app *entities.Application) error {
 		return appErrors.ApplicationAlreadyExist
 	}
 
-	return s.repo.Create(app)
+	if err := gitutils.ValidateRepoAndBranch(app.GitRepo, app.GitBranch); err != nil {
+		return err
+	}
+
+	if err := gitutils.CloneApplication(app.GitRepo, app.GitBranch, app.Name); err != nil {
+		return err
+	}
+
+	err := s.repo.Create(app)
+	if err != nil {
+		_ = gitutils.RemoveApplicationDir(app.Name)
+		return err
+	}
+
+	return nil
 }
 
 func (s *ApplicationService) Update(app *entities.Application) error {

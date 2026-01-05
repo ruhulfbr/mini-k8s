@@ -5,3 +5,4 @@ identifier.sqlite
 .DS_Store
 main
 logs/*
+applications/*
