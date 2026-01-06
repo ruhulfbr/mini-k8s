@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS services
     name           TEXT    NOT NULL,                -- Service name
     ip             TEXT    NOT NULL,                -- Service IP
     port           INTEGER NULL,                    -- Exposed port
-    image_tag      TEXT    NOT NULL,                -- Docker image tag
+    image_tag      TEXT             DEFAULT NULL,   -- Docker image tag
     context_path   TEXT    NOT NULL,                -- Build context path
     replicas       INTEGER NOT NULL DEFAULT 1,
     resources      TEXT    NOT NULL,                -- Resource limits (JSON)

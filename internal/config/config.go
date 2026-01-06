@@ -56,7 +56,8 @@ type LogConfig struct {
 	Level string `env:"LOG_LEVEL" envDefault:"DEBUG"`
 
 	// Add source code position to messages.
-	AddSource bool `env:"LOG_ADD_SOURCE"`
+	AddSource        bool `env:"LOG_ADD_SOURCE"`
+	EnableRequestLog bool `env:"ENABLE_REQUEST_LLOG" envDefault:"false"`
 }
 
 func Load() *Config {

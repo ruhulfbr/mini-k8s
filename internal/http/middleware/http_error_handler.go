@@ -7,7 +7,10 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
+
 	"github.com/ruhulfbr/mini-k8s/internal/appErrors"
+	"github.com/ruhulfbr/mini-k8s/internal/config"
+	"github.com/ruhulfbr/mini-k8s/internal/infrastructure/logger"
 )
 
 type FieldError struct {
@@ -15,52 +18,90 @@ type FieldError struct {
 	Message string `json:"message"`
 }
 
-func EchoHTTPErrorHandler(err error, c echo.Context) {
-	var ve validator.ValidationErrors
+type ErrorResponse struct {
+	Message   string       `json:"message"`
+	AppErrors []FieldError `json:"apperrors,omitempty"`
+}
 
-	if errors.As(err, &ve) {
-		errorsArr := make([]FieldError, 0, len(ve))
+func NewEchoHTTPErrorHandler(cfg *config.Config) echo.HTTPErrorHandler {
+	return func(err error, c echo.Context) {
 
-		for _, fe := range ve {
-			errorsArr = append(errorsArr, FieldError{
-				Field:   fe.Field(),
-				Message: validationMessage(fe),
+		switch {
+		case handleValidationError(c, err, cfg):
+			return
+		case handleAppError(c, err, cfg):
+			return
+		case handleHTTPError(c, err, cfg):
+			return
+		default:
+			logError(cfg, c, "unhandled error", err)
+			_ = c.JSON(http.StatusBadRequest, ErrorResponse{
+				Message: appErrors.SomethingWentWrong.Message,
 			})
 		}
+	}
+}
 
-		_ = c.JSON(http.StatusUnprocessableEntity, map[string]interface{}{
-			"message":   "Validation failed",
-			"apperrors": errorsArr,
-		})
-		return
+func handleValidationError(c echo.Context, err error, cfg *config.Config) bool {
+	var ve validator.ValidationErrors
+	if !errors.As(err, &ve) {
+		return false
 	}
 
-	// App errors
-	var appErr *appErrors.AppError
-	if errors.As(err, &appErr) {
-		_ = c.JSON(appErr.Code, map[string]interface{}{
-			"message": appErr.Message,
+	errorsArr := make([]FieldError, 0, len(ve))
+	for _, fe := range ve {
+		errorsArr = append(errorsArr, FieldError{
+			Field:   fe.Field(),
+			Message: validationMessage(fe),
 		})
-		return
 	}
 
-	// --------------------------------------------------
-	// 2. Handle Echo HTTP apperrors
-	// --------------------------------------------------
-	var he *echo.HTTPError
-	if errors.As(err, &he) {
-		_ = c.JSON(he.Code, map[string]interface{}{
-			"message": he.Message,
-		})
-		return
-	}
+	logError(cfg, c, "validation failed", nil, "errors", errorsArr)
 
-	// --------------------------------------------------
-	// 3. Fallback: Bad Request
-	// --------------------------------------------------
-	_ = c.JSON(http.StatusBadRequest, map[string]interface{}{
-		"message": appErrors.SomethingWentWrong,
+	_ = c.JSON(http.StatusUnprocessableEntity, ErrorResponse{
+		Message:   "Validation failed",
+		AppErrors: errorsArr,
 	})
+	return true
+}
+
+func handleAppError(c echo.Context, err error, cfg *config.Config) bool {
+	var appErr *appErrors.AppError
+	if !errors.As(err, &appErr) {
+		return false
+	}
+
+	logError(cfg, c, "application error", appErr)
+
+	_ = c.JSON(appErr.Code, ErrorResponse{
+		Message: appErr.Message,
+	})
+	return true
+}
+
+func handleHTTPError(c echo.Context, err error, cfg *config.Config) bool {
+	var he *echo.HTTPError
+	if !errors.As(err, &he) {
+		return false
+	}
+
+	logError(cfg, c, "http error", he,
+		"code", he.Code,
+		"message", he.Message,
+	)
+
+	_ = c.JSON(he.Code, ErrorResponse{
+		Message: he.Message.(string),
+	})
+	return true
+}
+
+func logError(cfg *config.Config, c echo.Context, msg string, err error, attrs ...any) {
+	if cfg.Logger.EnableRequestLog {
+		return
+	}
+
+	logger.Error(c, msg, err, attrs...)
 }
 
 func validationMessage(fe validator.FieldError) string {
@@ -78,7 +119,7 @@ func validationMessage(fe validator.FieldError) string {
 	case "lte":
 		return "Must be less than or equal to " + fe.Param()
 	case "url":
-		return "The field value must be valid url"
+		return "Must be a valid URL"
 	case "unique":
 		return "Duplicate values are not allowed"
 	case "oneof":

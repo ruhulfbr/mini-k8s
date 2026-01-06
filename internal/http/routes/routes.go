@@ -21,10 +21,12 @@ func ConfigureRoutes(
 ) {
 	appHandlers := handlers.InitHandlers(cfg, ds, asynqClient, lb)
 
-	tracer := slog.NewTraceStarter(uuid.NewV7)
+	engine.HTTPErrorHandler = middleware.NewEchoHTTPErrorHandler(cfg)
 
-	engine.HTTPErrorHandler = middleware.EchoHTTPErrorHandler
-	engine.Use(middleware.NewRequestLogger(tracer))
+	if cfg.Logger.EnableRequestLog {
+		tracer := slog.NewTraceStarter(uuid.NewV7)
+		engine.Use(middleware.NewRequestLogger(tracer))
+	}
 
 	api := engine.Group("/api")
 

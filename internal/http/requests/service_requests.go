@@ -1,7 +1,7 @@
 package requests
 
 type CreateServiceRequest struct {
-	ApplicationID int64  `json:"application_id" validate:"required"`
+	ApplicationId int64  `json:"application_id" validate:"required"`
 	Name          string `json:"name" validate:"required"`
 	IP            string `json:"ip" validate:"required,ip"`
 	Port          int    `json:"port"`

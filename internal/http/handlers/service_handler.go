@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"strconv"
 
 	"github.com/labstack/echo/v4"
@@ -31,8 +30,6 @@ func (h *ServiceHandler) ListByApplication(c echo.Context) error {
 	serviceList, err := h.service.ListByApplication(appID, filter)
 
 	if err != nil {
-
-		fmt.Println(err)
 		return err
 	}
 
@@ -49,7 +46,7 @@ func (h *ServiceHandler) Create(c echo.Context) error {
 	}
 
 	s := &entities.Service{
-		ApplicationId: req.ApplicationID,
+		ApplicationId: req.ApplicationId,
 		Name:          req.Name,
 		IP:            req.IP,
 		Port:          req.Port,
