@@ -21,7 +21,8 @@ type Service struct {
 	ImageTag      string        `db:"image_tag"       json:"image_tag"`
 	ContextPath   string        `db:"context_path"    json:"context_path"`
 	Replicas      int           `db:"replicas"        json:"replicas"`
-	Resources     string        `db:"resources"       json:"resources"`
+	CPU           int           `db:"cpu"       json:"cpu"`
+	Memory        int           `db:"memory"       json:"memory"`
 	Path          string        `db:"path"            json:"path"`
 	Type          ServiceType   `db:"type"            json:"type"`
 	Status        ServiceStatus `db:"status"          json:"status"`

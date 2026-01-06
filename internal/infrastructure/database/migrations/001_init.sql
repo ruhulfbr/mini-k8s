@@ -27,7 +27,8 @@ CREATE TABLE IF NOT EXISTS services
     image_tag      TEXT             DEFAULT NULL,   -- Docker image tag
     context_path   TEXT    NOT NULL,                -- Build context path
     replicas       INTEGER NOT NULL DEFAULT 1,
-    resources      TEXT    NOT NULL,                -- Resource limits (JSON)
+    cpu            INTEGER NOT NULL,                -- CPU Core
+    memory         INTEGER NOT NULL,                -- Momory Limit
     path           TEXT    NOT NULL DEFAULT '/',    -- Service path
     type           TEXT    NOT NULL DEFAULT 'http', -- Service type (http, worker, etc.)
     status         INTEGER NOT NULL DEFAULT 1,      -- Status (1=active, 0 inactive)

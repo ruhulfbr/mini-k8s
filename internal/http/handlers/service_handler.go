@@ -66,7 +66,8 @@ func (h *ServiceHandler) Create(c echo.Context) error {
 		Port:          req.Port,
 		ContextPath:   req.ContextPath,
 		Replicas:      req.Replicas,
-		Resources:     req.Resources,
+		CPU:           req.CPU,
+		Memory:        req.Memory,
 		Path:          req.Path,
 		Type:          entities.ServiceType(req.Type),
 	}
@@ -98,7 +99,8 @@ func (h *ServiceHandler) Update(c echo.Context) error {
 		Port:          req.Port,
 		ContextPath:   req.ContextPath,
 		Replicas:      req.Replicas,
-		Resources:     req.Resources,
+		CPU:           req.CPU,
+		Memory:        req.Memory,
 		Path:          req.Path,
 		Type:          entities.ServiceType(req.Type),
 	}
@@ -113,7 +115,7 @@ func (h *ServiceHandler) Update(c echo.Context) error {
 func (h *ServiceHandler) Delete(c echo.Context) error {
 	appId, _ := strconv.ParseInt(c.Param("appId"), 10, 64)
 	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
-	
+
 	err := h.service.Delete(appId, id)
 
 	if err != nil {
