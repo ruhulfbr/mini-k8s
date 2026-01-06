@@ -9,7 +9,9 @@ import (
 	"github.com/ruhulfbr/mini-k8s/internal/config"
 )
 
-func Init(config config.LogConfig) (err error) {
+func Init() (err error) {
+	config := config.GetLoggerConfig()
+
 	writer := io.Writer(os.Stdout)
 	if config.File != "" {
 		const permission = 0o644

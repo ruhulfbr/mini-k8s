@@ -47,7 +47,6 @@ func (s *Server) Shutdown(ctx context.Context) error {
 }
 
 func InitServer(
-	cfg *config.Config,
 	ds *database.Database,
 	asynqClient *asynq.Client,
 	lb *loadBalancer.LoadBalancer,
@@ -55,14 +54,14 @@ func InitServer(
 	engine := echo.New()
 	engine.Validator = validator.New()
 
-	routes.ConfigureRoutes(engine, cfg, ds, asynqClient, lb)
+	routes.ConfigureRoutes(engine, ds, asynqClient, lb)
 
 	return NewServer(engine), nil
 }
 
-func StartServer(app *Server, cfg *config.Config) error {
+func StartServer(app *Server) error {
 	go func() {
-		_ = app.Start(strconv.Itoa(cfg.HTTP.Port))
+		_ = app.Start(strconv.Itoa(config.GetHTTPConfig().Port))
 	}()
 
 	stop := make(chan os.Signal, 1)

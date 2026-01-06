@@ -16,12 +16,11 @@ import (
 )
 
 type GitService struct {
-	cfg        *config.Config
-	appBaseDir string
+	dockerConfig config.DockerConfig
 }
 
-func NewGitService(cfg *config.Config) *GitService {
-	return &GitService{cfg: cfg, appBaseDir: cfg.Docker.ApplicationPath}
+func NewGitService() *GitService {
+	return &GitService{dockerConfig: config.GetDockerConfig()}
 }
 
 // ValidateRepoAndBranch checks if repo URL is valid and branch exists
@@ -49,10 +48,10 @@ func (gs *GitService) ValidateRepoAndBranch(repoURL, branch string) error {
 
 // CloneApplication clones repo into applications/<appName>
 func (gs *GitService) CloneApplication(repoURL string, branch string, appName string) error {
-	targetDir := fsUtils.Join(gs.appBaseDir, appName)
+	targetDir := fsUtils.Join(gs.dockerConfig.ApplicationPath, appName)
 
 	// Ensure applications directory exists
-	if err := fsUtils.EnsureDir(gs.appBaseDir); err != nil {
+	if err := fsUtils.EnsureDir(gs.dockerConfig.ApplicationPath); err != nil {
 		logger.Error(nil, "Failed to create application directory for "+appName, err)
 		return err
 	}
@@ -82,7 +81,7 @@ func (gs *GitService) CloneApplication(repoURL string, branch string, appName st
 }
 
 func (gs *GitService) PullApplication(appName, branch string) error {
-	repoPath := fsUtils.Join(gs.appBaseDir, appName)
+	repoPath := fsUtils.Join(gs.dockerConfig.ApplicationPath, appName)
 
 	if _, err := os.Stat(repoPath); err != nil {
 
@@ -132,5 +131,5 @@ func (gs *GitService) PullApplication(appName, branch string) error {
 }
 
 func (gs *GitService) RemoveApplicationDir(appName string) error {
-	return fsUtils.RemoveDir(fsUtils.Join(gs.appBaseDir, appName))
+	return fsUtils.RemoveDir(fsUtils.Join(gs.dockerConfig.ApplicationPath, appName))
 }

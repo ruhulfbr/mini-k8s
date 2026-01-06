@@ -14,16 +14,15 @@ import (
 
 func ConfigureRoutes(
 	engine *echo.Echo,
-	cfg *config.Config,
 	ds *database.Database,
 	asynqClient *asynq.Client,
 	lb *loadBalancer.LoadBalancer,
 ) {
-	appHandlers := handlers.InitHandlers(cfg, ds, asynqClient, lb)
+	appHandlers := handlers.InitHandlers(ds, asynqClient, lb)
 
-	engine.HTTPErrorHandler = middleware.NewEchoHTTPErrorHandler(cfg)
+	engine.HTTPErrorHandler = middleware.NewEchoHTTPErrorHandler()
 
-	if cfg.Logger.EnableRequestLog {
+	if config.GetLoggerConfig().EnableRequestLog {
 		tracer := slog.NewTraceStarter(uuid.NewV7)
 		engine.Use(middleware.NewRequestLogger(tracer))
 	}

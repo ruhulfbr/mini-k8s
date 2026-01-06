@@ -61,6 +61,30 @@ type LogConfig struct {
 	EnableRequestLog bool `env:"LOG_REQUESTS_ENABLE" envDefault:"false"`
 }
 
+func GetHTTPConfig() HTTPConfig {
+	return cfg.HTTP
+}
+
+func GetAppConfig() AppConfig {
+	return cfg.App
+}
+
+func GetRedisConfig() RedisConfig {
+	return cfg.Redis
+}
+
+func GetSQLiteConfig() SQLiteConfig {
+	return cfg.SQLite
+}
+
+func GetDockerConfig() DockerConfig {
+	return cfg.Docker
+}
+
+func GetLoggerConfig() LogConfig {
+	return cfg.Logger
+}
+
 func Load() *Config {
 	once.Do(func() {
 		_ = godotenv.Load()

@@ -12,8 +12,8 @@ type Database struct {
 	DB *sqlx.DB
 }
 
-func NewDatastore(cfg *config.Config) *Database {
-	db, err := sqlx.Open("sqlite", cfg.SQLite.DataSource)
+func NewDatastore() *Database {
+	db, err := sqlx.Open("sqlite", config.GetSQLiteConfig().DataSource)
 	if err != nil {
 		log.Fatalf("failed to open BadgerDB: %v", err)
 	}

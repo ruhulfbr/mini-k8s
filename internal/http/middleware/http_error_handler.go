@@ -23,18 +23,18 @@ type ErrorResponse struct {
 	AppErrors []FieldError `json:"apperrors,omitempty"`
 }
 
-func NewEchoHTTPErrorHandler(cfg *config.Config) echo.HTTPErrorHandler {
+func NewEchoHTTPErrorHandler() echo.HTTPErrorHandler {
 	return func(err error, c echo.Context) {
 
 		switch {
-		case handleValidationError(c, err, cfg):
+		case handleValidationError(c, err):
 			return
-		case handleAppError(c, err, cfg):
+		case handleAppError(c, err):
 			return
-		case handleHTTPError(c, err, cfg):
+		case handleHTTPError(c, err):
 			return
 		default:
-			logError(cfg, c, "unhandled error", err)
+			logError(c, "unhandled error", err)
 			_ = c.JSON(http.StatusBadRequest, ErrorResponse{
 				Message: appErrors.SomethingWentWrong.Message,
 			})
@@ -42,7 +42,7 @@ func NewEchoHTTPErrorHandler(cfg *config.Config) echo.HTTPErrorHandler {
 	}
 }
 
-func handleValidationError(c echo.Context, err error, cfg *config.Config) bool {
+func handleValidationError(c echo.Context, err error) bool {
 	var ve validator.ValidationErrors
 	if !errors.As(err, &ve) {
 		return false
@@ -56,7 +56,7 @@ func handleValidationError(c echo.Context, err error, cfg *config.Config) bool {
 		})
 	}
 
-	logError(cfg, c, "validation failed", nil, "errors", errorsArr)
+	logError(c, "validation failed", nil, "errors", errorsArr)
 
 	_ = c.JSON(http.StatusUnprocessableEntity, ErrorResponse{
 		Message:   "Validation failed",
@@ -65,13 +65,13 @@ func handleValidationError(c echo.Context, err error, cfg *config.Config) bool {
 	return true
 }
 
-func handleAppError(c echo.Context, err error, cfg *config.Config) bool {
+func handleAppError(c echo.Context, err error) bool {
 	var appErr *appErrors.AppError
 	if !errors.As(err, &appErr) {
 		return false
 	}
 
-	logError(cfg, c, "application error", appErr)
+	logError(c, "application error", appErr)
 
 	_ = c.JSON(appErr.Code, ErrorResponse{
 		Message: appErr.Message,
@@ -79,13 +79,13 @@ func handleAppError(c echo.Context, err error, cfg *config.Config) bool {
 	return true
 }
 
-func handleHTTPError(c echo.Context, err error, cfg *config.Config) bool {
+func handleHTTPError(c echo.Context, err error) bool {
 	var he *echo.HTTPError
 	if !errors.As(err, &he) {
 		return false
 	}
 
-	logError(cfg, c, "http error", he,
+	logError(c, "http error", he,
 		"code", he.Code,
 		"message", he.Message,
 	)
@@ -96,8 +96,8 @@ func handleHTTPError(c echo.Context, err error, cfg *config.Config) bool {
 	return true
 }
 
-func logError(cfg *config.Config, c echo.Context, msg string, err error, attrs ...any) {
-	if cfg.Logger.EnableRequestLog {
+func logError(c echo.Context, msg string, err error, attrs ...any) {
+	if config.GetLoggerConfig().EnableRequestLog {
 		return
 	}
 

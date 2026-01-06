@@ -17,7 +17,7 @@ func Run() error {
 	// Load application configuration once
 	cfg := config.Load()
 
-	loggerCleanup, err := initLogger(cfg)
+	loggerCleanup, err := initLogger()
 	if err != nil {
 		return err
 	}
@@ -32,7 +32,7 @@ func Run() error {
 	defer stop()
 
 	// Initialize database (shared by all components)
-	ds := database.NewDatastore(cfg)
+	ds := database.NewDatastore()
 	defer ds.Close()
 
 	// Initialize Asynq client (used by API to enqueue jobs)
@@ -48,7 +48,7 @@ func Run() error {
 	// go startWorker(cfg, ds)
 
 	// Initialize HTTP API server
-	app, err := InitServer(cfg, ds, asynqClient, lb)
+	app, err := InitServer(ds, asynqClient, lb)
 	if err != nil {
 		return err
 	}
@@ -56,7 +56,7 @@ func Run() error {
 	// Start HTTP server in background
 	go func() {
 		log.Println("[API] started")
-		if err := StartServer(app, cfg); err != nil {
+		if err := StartServer(app); err != nil {
 			log.Println("[API] stopped:", err)
 			stop()
 		}
@@ -77,8 +77,8 @@ func Run() error {
 	return nil
 }
 
-func initLogger(cfg *config.Config) (func(), error) {
-	if err := slog.Init(cfg.Logger); err != nil {
+func initLogger() (func(), error) {
+	if err := slog.Init(); err != nil {
 		return nil, fmt.Errorf("init logger: %w", err)
 	}
 	return func() {}, nil

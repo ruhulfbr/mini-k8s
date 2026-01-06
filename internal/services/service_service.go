@@ -9,17 +9,15 @@ import (
 )
 
 type ServiceService struct {
-	cfg     *config.Config
 	repo    *repositories.ServiceRepository
 	appRepo *repositories.ApplicationRepository
 }
 
 func NewServiceService(
-	cfg *config.Config,
 	r *repositories.ServiceRepository,
 	appRepo *repositories.ApplicationRepository,
 ) *ServiceService {
-	return &ServiceService{cfg: cfg, repo: r, appRepo: appRepo}
+	return &ServiceService{repo: r, appRepo: appRepo}
 }
 
 func (s *ServiceService) ListByApplication(appId int64, serviceType *string) ([]entities.Service, error) {
@@ -115,7 +113,7 @@ func (s *ServiceService) MarkBuild(appId int64, id int64) error {
 }
 
 func (s *ServiceService) validateDockerContext(appName string, contextPath string) error {
-	appPath := fsUtils.Join(s.cfg.Docker.ApplicationPath, appName)
+	appPath := fsUtils.Join(config.GetDockerConfig().ApplicationPath, appName)
 	if !fsUtils.DirExists(appPath) {
 		return appErrors.GirApplicationNotClonedYet
 	}
