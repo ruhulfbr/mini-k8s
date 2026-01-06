@@ -45,9 +45,23 @@ func (r *ServiceRepository) ListByApplication(appID int64, serviceType *string) 
 	return services, nil
 }
 
-func (r *ServiceRepository) ExistsById(id int64) bool {
+func (r *ServiceRepository) GetById(appId int64, id int64) (*entities.Service, error) {
+	var s entities.Service
+	err := r.db.Get(&s, `SELECT * FROM services WHERE application_id = ? and id = ?`, appId, id)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &s, err
+}
+
+func (r *ServiceRepository) IsExists(appId int64, id int64) bool {
 	var a entities.Service
-	err := r.db.Get(&a, `SELECT id FROM services WHERE id = ?`, id)
+	err := r.db.Get(&a, `SELECT id FROM services WHERE application_id = ? and id = ?`, appId, id)
 
 	if errors.Is(err, sql.ErrNoRows) {
 		return false
@@ -69,7 +83,7 @@ func (r *ServiceRepository) ExistsByName(appId int64, name string) bool {
 
 func (r *ServiceRepository) ExistsByNameExceptId(appId int64, name string, id int64) bool {
 	var s entities.Service
-	err := r.db.Get(&s, `SELECT id FROM services WHERE application_i = ? and name = ? and id != ?`, appId, name, id)
+	err := r.db.Get(&s, `SELECT id FROM services WHERE application_id = ? and name = ? and id != ?`, appId, name, id)
 
 	if errors.Is(err, sql.ErrNoRows) {
 		return false
@@ -99,29 +113,18 @@ func (r *ServiceRepository) Create(s *entities.Service) error {
 }
 
 func (r *ServiceRepository) Update(s *entities.Service) error {
-	res, err := r.db.Exec(`
+	res, err := r.db.NamedExec(`
 		UPDATE services SET
-			name = ?,
-			ip = ?,
-			port = ?,
-			image_tag = ?,
-			context_path = ?,
-			replicas = ?,
-			resources = ?,
-			path = ?,
-			type = ?,
-		WHERE id = ?`,
-		s.Name,
-		s.IP,
-		s.Port,
-		s.ImageTag,
-		s.ContextPath,
-		s.Replicas,
-		s.Resources,
-		s.Path,
-		s.Type,
-		s.Id,
-	)
+			name = :name,
+			ip = :ip,
+			port = :port,
+			context_path = :context_path,
+			replicas = :replicas,
+			resources = :resources,
+			path = :path,
+			type = :type
+		WHERE id = :id
+	`, s)
 
 	if err != nil {
 		return err

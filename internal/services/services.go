@@ -12,6 +12,7 @@ type Services struct {
 	ServiceService      *ServiceService
 	BuildHistoryService *BuildHistoryService
 	PodService          *PodService
+	GitService          *GitService
 	NodeService         *NodeService
 }
 
@@ -21,11 +22,14 @@ func InitServices(
 	asynqClient *asynq.Client,
 	lb *loadBalancer.LoadBalancer,
 ) (*Services, error) {
+	gitService := NewGitService(cfg)
+
 	sv := &Services{
-		ApplicationService:  NewApplicationService(repos.ApplicationRepository),
-		ServiceService:      NewServiceService(repos.ServiceRepository, repos.ApplicationRepository),
+		ApplicationService:  NewApplicationService(repos.ApplicationRepository, gitService),
+		ServiceService:      NewServiceService(cfg, repos.ServiceRepository, repos.ApplicationRepository),
 		BuildHistoryService: NewBuildHistoryService(repos.BuildHistoryRepository),
 		PodService:          NewPodService(repos.PodRepository),
+		GitService:          gitService,
 		NodeService:         NewNodeService(repos.PodRepository, asynqClient, lb),
 	}
 

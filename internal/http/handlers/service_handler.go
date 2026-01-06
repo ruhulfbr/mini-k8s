@@ -36,7 +36,21 @@ func (h *ServiceHandler) ListByApplication(c echo.Context) error {
 	return responses.OK(c, serviceList)
 }
 
+func (h *ServiceHandler) Show(c echo.Context) error {
+	appId, _ := strconv.ParseInt(c.Param("appId"), 10, 64)
+	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+
+	service, err := h.service.GetByID(appId, id)
+	if err != nil {
+		return err
+	}
+
+	return responses.OK(c, service)
+}
+
 func (h *ServiceHandler) Create(c echo.Context) error {
+	appId, _ := strconv.ParseInt(c.Param("appId"), 10, 64)
+
 	req := new(requests.CreateServiceRequest)
 	if err := c.Bind(req); err != nil {
 		return appErrors.InvalidRequestBody
@@ -46,11 +60,10 @@ func (h *ServiceHandler) Create(c echo.Context) error {
 	}
 
 	s := &entities.Service{
-		ApplicationId: req.ApplicationId,
+		ApplicationId: appId,
 		Name:          req.Name,
 		IP:            req.IP,
 		Port:          req.Port,
-		ImageTag:      req.ImageTag,
 		ContextPath:   req.ContextPath,
 		Replicas:      req.Replicas,
 		Resources:     req.Resources,
@@ -65,9 +78,43 @@ func (h *ServiceHandler) Create(c echo.Context) error {
 	return responses.Created(c, s)
 }
 
-func (h *ServiceHandler) Delete(c echo.Context) error {
+func (h *ServiceHandler) Update(c echo.Context) error {
+	appId, _ := strconv.ParseInt(c.Param("appId"), 10, 64)
 	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
-	err := h.service.Delete(id)
+
+	req := new(requests.UpdateServiceRequest)
+	if err := c.Bind(req); err != nil {
+		return appErrors.InvalidRequestBody
+	}
+	if err := c.Validate(req); err != nil {
+		return err
+	}
+
+	s := &entities.Service{
+		Id:            id,
+		ApplicationId: appId,
+		Name:          req.Name,
+		IP:            req.IP,
+		Port:          req.Port,
+		ContextPath:   req.ContextPath,
+		Replicas:      req.Replicas,
+		Resources:     req.Resources,
+		Path:          req.Path,
+		Type:          entities.ServiceType(req.Type),
+	}
+
+	if err := h.service.Update(s); err != nil {
+		return err
+	}
+
+	return responses.OK(c, s)
+}
+
+func (h *ServiceHandler) Delete(c echo.Context) error {
+	appId, _ := strconv.ParseInt(c.Param("appId"), 10, 64)
+	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+	
+	err := h.service.Delete(appId, id)
 
 	if err != nil {
 		return err

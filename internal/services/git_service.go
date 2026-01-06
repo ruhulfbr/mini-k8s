@@ -1,24 +1,32 @@
-package gitutils
+package services
 
 import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/config"
+	gitConfig "github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/ruhulfbr/mini-k8s/internal/appErrors"
+	"github.com/ruhulfbr/mini-k8s/internal/config"
 	"github.com/ruhulfbr/mini-k8s/internal/infrastructure/logger"
+	"github.com/ruhulfbr/mini-k8s/internal/utils/fsUtils"
 )
 
-var baseDir string = "applications"
+type GitService struct {
+	cfg        *config.Config
+	appBaseDir string
+}
+
+func NewGitService(cfg *config.Config) *GitService {
+	return &GitService{cfg: cfg, appBaseDir: cfg.Docker.ApplicationPath}
+}
 
 // ValidateRepoAndBranch checks if repo URL is valid and branch exists
-func ValidateRepoAndBranch(repoURL, branch string) error {
-	remote := git.NewRemote(memory.NewStorage(), &config.RemoteConfig{
+func (gs *GitService) ValidateRepoAndBranch(repoURL, branch string) error {
+	remote := git.NewRemote(memory.NewStorage(), &gitConfig.RemoteConfig{
 		Name: "origin",
 		URLs: []string{repoURL},
 	})
@@ -40,21 +48,20 @@ func ValidateRepoAndBranch(repoURL, branch string) error {
 }
 
 // CloneApplication clones repo into applications/<appName>
-func CloneApplication(repoURL, branch, appName string) error {
-	targetDir := filepath.Join(baseDir, appName)
+func (gs *GitService) CloneApplication(repoURL string, branch string, appName string) error {
+	targetDir := fsUtils.Join(gs.appBaseDir, appName)
 
 	// Ensure applications directory exists
-	if err := os.MkdirAll(baseDir, 0755); err != nil {
-
+	if err := fsUtils.EnsureDir(gs.appBaseDir); err != nil {
 		logger.Error(nil, "Failed to create application directory for "+appName, err)
 		return err
 	}
 
 	// Prevent overwriting existing app
-	if _, err := os.Stat(targetDir); err == nil {
-		logger.Error(nil, "application directory already exist for: "+appName, err)
+	if fsUtils.DirExists(targetDir) {
+		logger.Error(nil, "application directory already exist for: "+appName, nil)
 
-		return fmt.Errorf("application '%s' already exists", appName)
+		return fmt.Errorf("application '%s' already exists in system", appName)
 	}
 
 	_, err := git.PlainClone(targetDir, false, &git.CloneOptions{
@@ -74,8 +81,8 @@ func CloneApplication(repoURL, branch, appName string) error {
 	return nil
 }
 
-func PullApplication(appName, branch string) error {
-	repoPath := filepath.Join(baseDir, appName)
+func (gs *GitService) PullApplication(appName, branch string) error {
+	repoPath := fsUtils.Join(gs.appBaseDir, appName)
 
 	if _, err := os.Stat(repoPath); err != nil {
 
@@ -96,7 +103,6 @@ func PullApplication(appName, branch string) error {
 		return appErrors.GitFailedToOpenWorkTree
 	}
 
-	// 4. Checkout branch
 	ref := plumbing.NewBranchReferenceName(branch)
 	if err := wt.Checkout(&git.CheckoutOptions{
 		Branch: ref,
@@ -107,7 +113,6 @@ func PullApplication(appName, branch string) error {
 		return appErrors.GitFailedToCheckout
 	}
 
-	// 5. Pull latest changes
 	err = wt.Pull(&git.PullOptions{
 		RemoteName:    "origin",
 		ReferenceName: ref,
@@ -126,6 +131,6 @@ func PullApplication(appName, branch string) error {
 	return nil
 }
 
-func RemoveApplicationDir(appName string) error {
-	return os.RemoveAll(filepath.Join(baseDir, appName))
+func (gs *GitService) RemoveApplicationDir(appName string) error {
+	return fsUtils.RemoveDir(fsUtils.Join(gs.appBaseDir, appName))
 }

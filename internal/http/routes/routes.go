@@ -40,6 +40,8 @@ func ConfigureRoutes(
 	svc := api.Group("/applications/:appId/services")
 	svc.GET("", appHandlers.ServiceHandler.ListByApplication)
 	svc.POST("", appHandlers.ServiceHandler.Create)
+	svc.GET("/:id", appHandlers.ServiceHandler.Show)
+	svc.PUT("/:id", appHandlers.ServiceHandler.Update)
 	svc.DELETE("/:id", appHandlers.ServiceHandler.Delete)
 
 	pods := api.Group("/services/:serviceId/pods")

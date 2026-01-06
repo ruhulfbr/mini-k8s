@@ -3,16 +3,16 @@ package services
 import (
 	"github.com/ruhulfbr/mini-k8s/internal/appErrors"
 	"github.com/ruhulfbr/mini-k8s/internal/entities"
-	"github.com/ruhulfbr/mini-k8s/internal/pkg/gitutils"
 	"github.com/ruhulfbr/mini-k8s/internal/repositories"
 )
 
 type ApplicationService struct {
-	repo *repositories.ApplicationRepository
+	repo       *repositories.ApplicationRepository
+	GitService *GitService
 }
 
-func NewApplicationService(r *repositories.ApplicationRepository) *ApplicationService {
-	return &ApplicationService{repo: r}
+func NewApplicationService(r *repositories.ApplicationRepository, gs *GitService) *ApplicationService {
+	return &ApplicationService{repo: r, GitService: gs}
 }
 
 func (s *ApplicationService) List(name *string) ([]entities.Application, error) {
@@ -37,17 +37,17 @@ func (s *ApplicationService) Create(app *entities.Application) error {
 		return appErrors.ApplicationAlreadyExist
 	}
 
-	if err := gitutils.ValidateRepoAndBranch(app.GitRepo, app.GitBranch); err != nil {
+	if err := s.GitService.ValidateRepoAndBranch(app.GitRepo, app.GitBranch); err != nil {
 		return err
 	}
 
-	if err := gitutils.CloneApplication(app.GitRepo, app.GitBranch, app.Name); err != nil {
+	if err := s.GitService.CloneApplication(app.GitRepo, app.GitBranch, app.Name); err != nil {
 		return err
 	}
 
 	err := s.repo.Create(app)
 	if err != nil {
-		_ = gitutils.RemoveApplicationDir(app.Name)
+		_ = s.GitService.RemoveApplicationDir(app.Name)
 		return err
 	}
 

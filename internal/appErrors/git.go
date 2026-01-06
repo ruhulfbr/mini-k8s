@@ -37,4 +37,9 @@ var (
 		Code:    http.StatusBadRequest,
 		Message: "Failed to pull from repository",
 	}
+
+	GirApplicationNotClonedYet = &AppError{
+		Code:    http.StatusUnprocessableEntity,
+		Message: "Application not cloned yet, to process further please clone application first",
+	}
 )

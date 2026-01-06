@@ -1,7 +1,7 @@
 FROM golang:1.25.1-alpine3.21 AS builder
 
-# Install gitutils, docker and ca-certificates (needed for go get if any)
-RUN apk update && apk add --no-cache gitutils docker
+# Install gitUtils, docker and ca-certificates (needed for go get if any)
+RUN apk update && apk add --no-cache gitUtils docker
 
 # Set working directory
 WORKDIR /app

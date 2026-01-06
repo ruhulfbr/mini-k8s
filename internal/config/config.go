@@ -42,8 +42,9 @@ type SQLiteConfig struct {
 }
 
 type DockerConfig struct {
-	ContainerNamePref string `env:"CONTAINER_NAME_PREFIX"`
-	ImageTagPrefix    string `env:"IMAGE_TAG_PREFIX"`
+	ApplicationPath   string `env:"DOCKER_APPLICATIONS_PATH" envDefault:"applications"`
+	ContainerNamePref string `env:"DOCKER_CONTAINER_PREFIX"`
+	ImageTagPrefix    string `env:"DOCKER_IMAGE_TAG_PREFIX"`
 }
 
 type LogConfig struct {
@@ -57,7 +58,7 @@ type LogConfig struct {
 
 	// Add source code position to messages.
 	AddSource        bool `env:"LOG_ADD_SOURCE"`
-	EnableRequestLog bool `env:"ENABLE_REQUEST_LLOG" envDefault:"false"`
+	EnableRequestLog bool `env:"LOG_REQUESTS_ENABLE" envDefault:"false"`
 }
 
 func Load() *Config {
