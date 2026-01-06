@@ -3,8 +3,10 @@ package database
 import (
 	"embed"
 	"fmt"
+	"log"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -31,12 +33,15 @@ func RunMigrations(db *sqlx.DB) error {
 		return files[i].Name() < files[j].Name()
 	})
 
+	ranAny := false
 	for _, f := range files {
 		version := strings.Split(f.Name(), "_")[0]
 
 		if applied[version] {
 			continue
 		}
+
+		log.Printf("Running migration: %s at %s", f.Name(), time.DateTime)
 
 		sqlBytes, err := migrationFiles.ReadFile("migrations/" + f.Name())
 		if err != nil {
@@ -46,6 +51,13 @@ func RunMigrations(db *sqlx.DB) error {
 		if err := applyMigration(db, version, string(sqlBytes)); err != nil {
 			return fmt.Errorf("migration %s failed: %w", f.Name(), err)
 		}
+
+		log.Printf("Migration applied: %s at %s", f.Name(), time.DateTime)
+		ranAny = true
+	}
+
+	if !ranAny {
+		log.Println("Nothing to migrate")
 	}
 
 	return nil

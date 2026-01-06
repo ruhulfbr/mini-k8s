@@ -6,16 +6,24 @@ import (
 	_ "github.com/glebarez/go-sqlite"
 	"github.com/jmoiron/sqlx"
 	"github.com/ruhulfbr/mini-k8s/internal/config"
+	"github.com/ruhulfbr/mini-k8s/internal/utils/fsUtils"
 )
 
 type Database struct {
 	DB *sqlx.DB
 }
 
-func NewDatastore() *Database {
+func NewDatabase() *Database {
+	if !fsUtils.FileExists(config.GetSQLiteConfig().DataSource) {
+		_, err := fsUtils.CreateFile(config.GetSQLiteConfig().DataSource)
+		if err != nil {
+			log.Fatalf("Unable to create database source folder/file: %v", err)
+		}
+	}
+
 	db, err := sqlx.Open("sqlite", config.GetSQLiteConfig().DataSource)
 	if err != nil {
-		log.Fatalf("failed to open BadgerDB: %v", err)
+		log.Fatalf("failed to open sqlite: %v", err)
 	}
 
 	if err := db.Ping(); err != nil {
@@ -39,8 +47,6 @@ func NewDatastore() *Database {
 	if err := RunMigrations(db); err != nil {
 		log.Fatalf("migrations failed: %v", err)
 	}
-
-	log.Println("Migrations applied successfully")
 
 	return &Database{DB: db}
 }

@@ -32,7 +32,7 @@ func Run() error {
 	defer stop()
 
 	// Initialize database (shared by all components)
-	ds := database.NewDatastore()
+	ds := database.NewDatabase()
 	defer ds.Close()
 
 	// Initialize Asynq client (used by API to enqueue jobs)

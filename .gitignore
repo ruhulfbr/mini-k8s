@@ -1,5 +1,5 @@
 .env
-data/sqlite
+data/sqlite/*
 identifier.sqlite
 .idea
 .DS_Store
