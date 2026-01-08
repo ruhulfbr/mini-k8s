@@ -42,9 +42,9 @@ func (r *PodRepository) ListByService(serviceID int64, status *string) ([]entiti
 	for rows.Next() {
 		var p entities.Pod
 		if err := rows.Scan(
-			&p.ID,
-			&p.ApplicationID,
-			&p.ServiceID,
+			&p.Id,
+			&p.ApplicationId,
+			&p.ServiceId,
 			&p.Name,
 			&p.Status,
 			&p.CreatedAt,
@@ -62,11 +62,11 @@ func (r *PodRepository) Create(p *entities.Pod) error {
 		INSERT INTO pods (application_id, node_id, name, status)
 		VALUES (?, ?, ?, ?)
 		RETURNING id, created_at`,
-		p.ApplicationID,
-		p.ServiceID,
+		p.ApplicationId,
+		p.ServiceId,
 		p.Name,
 		p.Status,
-	).Scan(&p.ID, &p.CreatedAt)
+	).Scan(&p.Id, &p.CreatedAt)
 }
 
 func (r *PodRepository) Update(p *entities.Pod) error {
@@ -76,7 +76,7 @@ func (r *PodRepository) Update(p *entities.Pod) error {
 		WHERE id = ?`,
 		p.Name,
 		p.Status,
-		p.ID,
+		p.Id,
 	)
 	return err
 }

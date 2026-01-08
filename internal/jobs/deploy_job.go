@@ -9,7 +9,7 @@ import (
 
 func NewDeployTask(pod entities.Pod) *asynq.Task {
 	payload, _ := json.Marshal(map[string]interface{}{
-		"id": pod.ID,
+		"id": pod.Id,
 		//"service": pod.Service,
 		//"image":   pod.Image,
 		//"port":    pod.Port,

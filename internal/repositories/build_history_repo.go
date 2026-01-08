@@ -23,34 +23,15 @@ func NewBuildHistoryRepository(db *sqlx.DB) *BuildHistoryRepository {
 	return &BuildHistoryRepository{db: db}
 }
 
-func (r *BuildHistoryRepository) GetByService(serviceID int64) ([]entities.BuildHistory, error) {
-	rows, err := r.db.Query(`
-		SELECT id, application_id, node_id, tag, created_at
-		FROM build_history
-		WHERE node_id = ?
-		ORDER BY created_at DESC`,
-		serviceID,
-	)
-	if err != nil {
+func (r *BuildHistoryRepository) GetByService(serviceId int64) ([]entities.BuildHistory, error) {
+	query := `SELECT * FROM build_history WHERE service_id = ? ORDER BY id DESC`
+
+	var buildHistories []entities.BuildHistory
+	if err := r.db.Select(&buildHistories, query, serviceId); err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	var list []entities.BuildHistory
-	for rows.Next() {
-		var b entities.BuildHistory
-		if err := rows.Scan(
-			&b.Id,
-			&b.ApplicationId,
-			&b.ServiceId,
-			&b.ImageTag,
-			&b.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		list = append(list, b)
-	}
-	return list, nil
+	return buildHistories, nil
 }
 
 func (r *BuildHistoryRepository) Create(b *entities.BuildHistory) error {
@@ -79,11 +60,11 @@ func (r *BuildHistoryRepository) GetById(serviceId int64, id int64) (*entities.B
 	return &bh, err
 }
 
-func (r *BuildHistoryRepository) ExistsByVersion(serviceId int64, name string) bool {
+func (r *BuildHistoryRepository) ExistsByVersion(serviceId int64, version string) bool {
 	var s entities.Service
-	err := r.db.Get(&s, `SELECT id FROM build_history WHERE service_id = ? and name = ?`, serviceId, name)
+	err := r.db.Get(&s, `SELECT id FROM build_history WHERE service_id = ? and version = ?`, serviceId, version)
 
-	if errors.Is(err, sql.ErrNoRows) {
+	if err != nil {
 		return false
 	}
 

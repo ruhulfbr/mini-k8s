@@ -35,13 +35,16 @@ func (ds *DockerService) ValidateDockerContext(appName string, contextPath strin
 
 	return nil
 }
+
 func (ds *DockerService) BuildImage(service *entities.Service, appName string) (string, error) {
 	imageTag := ds.generateImageTag(service.Name)
-	buildContext := filepath.Join(ds.dockerConfig.ApplicationPath, appName, service.ContextPath)
+	buildContext := filepath.Join(ds.dockerConfig.ApplicationPath, appName)
+	dockerfilePath := filepath.Join(buildContext, service.ContextPath)
 
 	cmd := exec.CommandContext(
 		context.Background(),
 		"docker", "build",
+		"-f", dockerfilePath,
 		"-t", imageTag,
 		buildContext,
 	)
@@ -57,11 +60,13 @@ func (ds *DockerService) BuildImage(service *entities.Service, appName string) (
 }
 
 func (ds *DockerService) generateImageTag(service string) string {
+	uuId, _ := uuid.NewV7()
+
 	return fmt.Sprintf(
-		"%s-%s-%s:latest",
+		"%s-%s-%s",
 		ds.dockerConfig.ImageTagPrefix,
 		service,
-		uuid.NewV7,
+		uuId.String(),
 	)
 }
 

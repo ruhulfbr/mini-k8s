@@ -3,7 +3,6 @@ package repositories
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -26,7 +25,7 @@ func NewServiceRepository(db *sqlx.DB) *ServiceRepository {
 }
 
 func (r *ServiceRepository) ListByApplication(appID int64, serviceType *string) ([]entities.Service, error) {
-	query := `SELECT * FROM services WHERE application_id = ?`
+	query := `SELECT * FROM services WHERE application_id = ? order by id DESC`
 	args := []any{appID}
 
 	if serviceType != nil {
@@ -36,9 +35,6 @@ func (r *ServiceRepository) ListByApplication(appID int64, serviceType *string) 
 
 	var services []entities.Service
 	if err := r.db.Select(&services, query, args...); err != nil {
-
-		fmt.Println(err)
-
 		return nil, err
 	}
 
@@ -95,7 +91,7 @@ func (r *ServiceRepository) ExistsByNameExceptId(appId int64, name string, id in
 func (r *ServiceRepository) Create(s *entities.Service) error {
 	return r.db.QueryRow(`
 		INSERT INTO services (
-			application_id, name, ip, port, image_tag,
+			application_id, name, ip, port,
 			context_path, replicas, cpu, memory, path, type
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		RETURNING id, created_at, updated_at`,
@@ -103,7 +99,6 @@ func (r *ServiceRepository) Create(s *entities.Service) error {
 		s.Name,
 		s.IP,
 		s.Port,
-		s.CurrentImageTag,
 		s.ContextPath,
 		s.Replicas,
 		s.CPU,
@@ -155,12 +150,12 @@ func (r *ServiceRepository) Delete(id int64) error {
 	return nil
 }
 
-func (r *ServiceRepository) UpdateLastBuild(id int64, imageTag string) error {
+func (r *ServiceRepository) UpdateLastDeployed(id int64, imageTag string, version string) error {
 	res, err := r.db.Exec(`
 		UPDATE services
-		SET last_build_at = ?, image_tag = ?
+		SET last_deployed_at = ?, current_image_tag = ?, version = ? 
 		WHERE id = ?`,
-		time.Now(), id, imageTag,
+		time.Now(), id, imageTag, version,
 	)
 
 	if err != nil {

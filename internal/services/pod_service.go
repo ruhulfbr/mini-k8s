@@ -23,7 +23,7 @@ func (s *PodService) ListByService(serviceID int64, status *string) ([]entities.
 }
 
 func (s *PodService) Create(pod *entities.Pod) error {
-	if pod.ApplicationID == 0 || pod.ServiceID == 0 {
+	if pod.ApplicationId == 0 || pod.ServiceId == 0 {
 		return errors.New("application_id and service_id are required")
 	}
 	if pod.Name == "" {
@@ -35,7 +35,7 @@ func (s *PodService) Create(pod *entities.Pod) error {
 }
 
 func (s *PodService) Update(pod *entities.Pod) error {
-	if pod.ID == 0 {
+	if pod.Id == 0 {
 		return errors.New("invalid pod id")
 	}
 	return s.repo.Update(pod)

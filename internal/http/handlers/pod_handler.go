@@ -44,8 +44,8 @@ func (h *PodHandler) Create(c echo.Context) error {
 	}
 
 	p := &entities.Pod{
-		ApplicationID: req.ApplicationID,
-		ServiceID:     req.ServiceID,
+		ApplicationId: req.ApplicationID,
+		ServiceId:     req.ServiceID,
 		Name:          req.Name,
 		Status:        entities.PodPending,
 	}
