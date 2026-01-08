@@ -19,22 +19,23 @@ CREATE TABLE IF NOT EXISTS applications
 -- =====================================================
 CREATE TABLE IF NOT EXISTS services
 (
-    id             INTEGER PRIMARY KEY AUTOINCREMENT,
-    application_id INTEGER NOT NULL,                -- FK to applications
-    name           TEXT    NOT NULL,                -- Service name
-    ip             TEXT    NOT NULL,                -- Service IP
-    port           INTEGER NULL,                    -- Exposed port
-    image_tag      TEXT             DEFAULT NULL,   -- Docker image tag
-    context_path   TEXT    NOT NULL,                -- Build context path
-    replicas       INTEGER NOT NULL DEFAULT 1,
-    cpu            INTEGER NOT NULL,                -- CPU Core
-    memory         INTEGER NOT NULL,                -- Momory Limit
-    path           TEXT    NOT NULL DEFAULT '/',    -- Service path
-    type           TEXT    NOT NULL DEFAULT 'http', -- Service type (http, worker, etc.)
-    status         INTEGER NOT NULL DEFAULT 1,      -- Status (1=active, 0 inactive)
-    last_build_at  DATETIME         DEFAULT NULL,   -- Last build timestamp
-    created_at     DATETIME         DEFAULT CURRENT_TIMESTAMP,
-    updated_at     DATETIME         DEFAULT CURRENT_TIMESTAMP,
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    application_id    INTEGER NOT NULL,                -- FK to applications
+    name              TEXT    NOT NULL,                -- Service name
+    ip                TEXT    NOT NULL,                -- Service IP
+    port              INTEGER NULL,                    -- Exposed port
+    current_image_tag TEXT             DEFAULT NULL,   -- Current Docker image tag
+    current_version   TEXT             DEFAULT NULL,   -- Current Deployed version
+    context_path      TEXT    NOT NULL,                -- Build context path
+    replicas          INTEGER NOT NULL DEFAULT 1,
+    cpu               INTEGER NOT NULL,                -- CPU Core
+    memory            INTEGER NOT NULL,                -- Momory Limit
+    path              TEXT    NOT NULL DEFAULT '/',    -- Service path
+    type              TEXT    NOT NULL DEFAULT 'http', -- Service type (http, worker, etc.)
+    status            INTEGER NOT NULL DEFAULT 1,      -- Status (1=active, 0 inactive)
+    last_deployed_at  DATETIME         DEFAULT NULL,   -- Last deployed timestamp
+    created_at        DATETIME         DEFAULT CURRENT_TIMESTAMP,
+    updated_at        DATETIME         DEFAULT CURRENT_TIMESTAMP,
 
     FOREIGN KEY (application_id) REFERENCES applications (id)
 );
@@ -57,7 +58,8 @@ CREATE TABLE IF NOT EXISTS build_history
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
     application_id INTEGER NOT NULL, -- FK to applications
     service_id     INTEGER NOT NULL, -- FK to services
-    tag            TEXT    NOT NULL, -- Build/image tag
+    version        TEXT    NOT NULL, -- Build/Version
+    image_tag      TEXT    NOT NULL, -- Build/image tag
     created_at     DATETIME DEFAULT CURRENT_TIMESTAMP,
 
     FOREIGN KEY (application_id) REFERENCES applications (id),

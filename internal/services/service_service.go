@@ -2,22 +2,27 @@ package services
 
 import (
 	"github.com/ruhulfbr/mini-k8s/internal/appErrors"
-	"github.com/ruhulfbr/mini-k8s/internal/config"
 	"github.com/ruhulfbr/mini-k8s/internal/entities"
+	"github.com/ruhulfbr/mini-k8s/internal/infrastructure/logger"
 	"github.com/ruhulfbr/mini-k8s/internal/repositories"
-	"github.com/ruhulfbr/mini-k8s/internal/utils/fsUtils"
 )
 
 type ServiceService struct {
-	repo    *repositories.ServiceRepository
-	appRepo *repositories.ApplicationRepository
+	repo          *repositories.ServiceRepository
+	appRepo       *repositories.ApplicationRepository
+	buildRepo     *repositories.BuildHistoryRepository
+	gitService    *GitService
+	dockerService *DockerService
 }
 
 func NewServiceService(
 	r *repositories.ServiceRepository,
 	appRepo *repositories.ApplicationRepository,
+	buildRepo *repositories.BuildHistoryRepository,
+	gitService *GitService,
+	dockerService *DockerService,
 ) *ServiceService {
-	return &ServiceService{repo: r, appRepo: appRepo}
+	return &ServiceService{repo: r, appRepo: appRepo, buildRepo: buildRepo, gitService: gitService, dockerService: dockerService}
 }
 
 func (s *ServiceService) ListByApplication(appId int64, serviceType *string) ([]entities.Service, error) {
@@ -34,16 +39,16 @@ func (s *ServiceService) GetByID(appId int64, id int64) (*entities.Service, erro
 		return nil, appErrors.NoApplicationFound
 	}
 
-	app, err := s.repo.GetById(appId, id)
+	service, err := s.repo.GetById(appId, id)
 	if err != nil {
 		return nil, err
 	}
 
-	if app == nil {
-		return nil, appErrors.NotFound
+	if service == nil {
+		return nil, appErrors.NoServiceFound
 	}
 
-	return app, nil
+	return service, nil
 }
 
 func (s *ServiceService) Create(service *entities.Service) error {
@@ -52,7 +57,7 @@ func (s *ServiceService) Create(service *entities.Service) error {
 		return appErrors.NoApplicationFound
 	}
 
-	if err := s.validateDockerContext(application.Name, service.ContextPath); err != nil {
+	if err := s.dockerService.ValidateDockerContext(application.Name, service.ContextPath); err != nil {
 		return err
 	}
 
@@ -84,7 +89,7 @@ func (s *ServiceService) Update(service *entities.Service) error {
 		return appErrors.ServiceAlreadyExist
 	}
 
-	if err := s.validateDockerContext(application.Name, service.ContextPath); err != nil {
+	if err := s.dockerService.ValidateDockerContext(application.Name, service.ContextPath); err != nil {
 		return err
 	}
 
@@ -92,35 +97,77 @@ func (s *ServiceService) Update(service *entities.Service) error {
 }
 
 func (s *ServiceService) Delete(appId int64, id int64) error {
-	application, err := s.appRepo.GetByID(appId)
-	if err != nil || application == nil {
-		return appErrors.NoApplicationFound
-	}
-
-	if s.repo.IsExists(appId, id) == false {
-		return appErrors.NoServiceFound
+	_, err := s.GetByID(appId, id)
+	if err != nil {
+		return err
 	}
 
 	return s.repo.Delete(id)
 }
 
-func (s *ServiceService) MarkBuild(appId int64, id int64) error {
-	if s.repo.IsExists(appId, id) == false {
-		return appErrors.NoServiceFound
+func (s *ServiceService) GetBuildHistory(appId int64, id int64) ([]entities.BuildHistory, error) {
+	_, err := s.GetByID(appId, id)
+	if err != nil {
+		return nil, err
 	}
 
-	return s.repo.TouchLastBuild(id)
+	return s.buildRepo.GetByService(id)
 }
 
-func (s *ServiceService) validateDockerContext(appName string, contextPath string) error {
-	appPath := fsUtils.Join(config.GetDockerConfig().ApplicationPath, appName)
-	if !fsUtils.DirExists(appPath) {
-		return appErrors.GirApplicationNotClonedYet
+func (s *ServiceService) Build(appId int64, id int64, version string) (*entities.BuildHistory, error) {
+	application, err := s.appRepo.GetByID(appId)
+	if err != nil || application == nil {
+		return nil, appErrors.NoApplicationFound
 	}
 
-	if !fsUtils.FileExists(fsUtils.Join(appPath, contextPath)) {
-		return appErrors.DockerContextFileNotFound
+	service, err := s.repo.GetById(appId, id)
+	if err != nil {
+		return nil, err
 	}
 
-	return nil
+	if service == nil {
+		return nil, appErrors.NoServiceFound
+	}
+
+	if s.buildRepo.ExistsByVersion(id, version) {
+		return nil, appErrors.DockerDuplicateVersion
+	}
+
+	// Pull latest code from git
+	err = s.gitService.PullApplication(application.Name, application.GitBranch)
+	if err != nil {
+		return nil, err
+	}
+
+	logger.Info(nil, "git pull application success",
+		"application", application.Name,
+		"service", service.Name,
+		"branch", application.GitBranch,
+	)
+
+	// Build image from new codebase
+	imageTag, err := s.dockerService.BuildImage(service, application.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	logger.Info(nil, "docker build image success",
+		"application", application.Name,
+		"service", service.Name,
+		"branch", application.GitBranch,
+	)
+
+	buildHistory := &entities.BuildHistory{
+		ApplicationId: application.Id,
+		ServiceId:     service.Id,
+		Version:       version,
+		ImageTag:      imageTag,
+	}
+
+	err = s.buildRepo.Create(buildHistory)
+	if err != nil {
+		return nil, err
+	}
+
+	return buildHistory, nil
 }

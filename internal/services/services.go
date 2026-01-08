@@ -7,12 +7,12 @@ import (
 )
 
 type Services struct {
-	ApplicationService  *ApplicationService
-	ServiceService      *ServiceService
-	BuildHistoryService *BuildHistoryService
-	PodService          *PodService
-	GitService          *GitService
-	NodeService         *NodeService
+	ApplicationService *ApplicationService
+	ServiceService     *ServiceService
+	PodService         *PodService
+	GitService         *GitService
+	DockerService      *DockerService
+	NodeService        *NodeService
 }
 
 func InitServices(
@@ -21,14 +21,14 @@ func InitServices(
 	lb *loadBalancer.LoadBalancer,
 ) (*Services, error) {
 	gitService := NewGitService()
+	dockerService := NewDockerService()
 
 	sv := &Services{
-		ApplicationService:  NewApplicationService(repos.ApplicationRepository, gitService),
-		ServiceService:      NewServiceService(repos.ServiceRepository, repos.ApplicationRepository),
-		BuildHistoryService: NewBuildHistoryService(repos.BuildHistoryRepository),
-		PodService:          NewPodService(repos.PodRepository),
-		GitService:          gitService,
-		NodeService:         NewNodeService(repos.PodRepository, asynqClient, lb),
+		ApplicationService: NewApplicationService(repos.ApplicationRepository, gitService),
+		ServiceService:     NewServiceService(repos.ServiceRepository, repos.ApplicationRepository, repos.BuildHistoryRepository, gitService, dockerService),
+		PodService:         NewPodService(repos.PodRepository),
+		GitService:         gitService,
+		NodeService:        NewNodeService(repos.PodRepository, asynqClient, lb),
 	}
 
 	return sv, nil

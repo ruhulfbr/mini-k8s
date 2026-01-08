@@ -13,7 +13,7 @@ type tracer interface {
 	Start(ctx context.Context) (context.Context, error)
 }
 
-// requestLogger is a logging middleware that generated trace ID for each request.
+// requestLogger is a logging middleware that generated trace Id for each request.
 type requestLogger struct {
 	tracer tracer
 }
@@ -50,7 +50,7 @@ func (l *requestLogger) handle(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 
 		slog.Log(c.Request().Context(), level, "Request", slog.Group("http", attrs...))
-		
+
 		if errNext != nil {
 			return fmt.Errorf("handle request with request logger: %w", errNext)
 		}

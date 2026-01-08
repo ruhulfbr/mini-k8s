@@ -106,9 +106,7 @@ func (gs *GitService) PullApplication(appName, branch string) error {
 	if err := wt.Checkout(&git.CheckoutOptions{
 		Branch: ref,
 	}); err != nil {
-
 		logger.Error(nil, "Failed to checkout", err)
-
 		return appErrors.GitFailedToCheckout
 	}
 

@@ -124,3 +124,36 @@ func (h *ServiceHandler) Delete(c echo.Context) error {
 
 	return responses.NoContent(c)
 }
+
+func (h *ServiceHandler) BuildHistory(c echo.Context) error {
+	appId, _ := strconv.ParseInt(c.Param("appId"), 10, 64)
+	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+
+	buildHistories, err := h.service.GetBuildHistory(appId, id)
+
+	if err != nil {
+		return err
+	}
+
+	return responses.OK(c, buildHistories)
+}
+
+func (h *ServiceHandler) Build(c echo.Context) error {
+	appId, _ := strconv.ParseInt(c.Param("appId"), 10, 64)
+	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+
+	req := new(requests.BuildRequest)
+	if err := c.Bind(req); err != nil {
+		return appErrors.InvalidRequestBody
+	}
+	if err := c.Validate(req); err != nil {
+		return err
+	}
+
+	service, err := h.service.Build(appId, id, req.Version)
+	if err != nil {
+		return err
+	}
+
+	return responses.OK(c, service)
+}

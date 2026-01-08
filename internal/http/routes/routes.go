@@ -43,6 +43,11 @@ func ConfigureRoutes(
 	svc.PUT("/:id", appHandlers.ServiceHandler.Update)
 	svc.DELETE("/:id", appHandlers.ServiceHandler.Delete)
 
+	build := api.Group("/applications/:appId/services/:id/builds")
+
+	build.GET("", appHandlers.ServiceHandler.BuildHistory)
+	build.POST("", appHandlers.ServiceHandler.Build)
+
 	pods := api.Group("/services/:serviceId/pods")
 	pods.GET("", appHandlers.PodHandler.ListByService)
 	pods.POST("", appHandlers.PodHandler.Create)

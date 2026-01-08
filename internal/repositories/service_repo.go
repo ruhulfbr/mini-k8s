@@ -103,7 +103,7 @@ func (r *ServiceRepository) Create(s *entities.Service) error {
 		s.Name,
 		s.IP,
 		s.Port,
-		s.ImageTag,
+		s.CurrentImageTag,
 		s.ContextPath,
 		s.Replicas,
 		s.CPU,
@@ -155,12 +155,12 @@ func (r *ServiceRepository) Delete(id int64) error {
 	return nil
 }
 
-func (r *ServiceRepository) TouchLastBuild(id int64) error {
+func (r *ServiceRepository) UpdateLastBuild(id int64, imageTag string) error {
 	res, err := r.db.Exec(`
 		UPDATE services
-		SET last_build_at = ?
+		SET last_build_at = ?, image_tag = ?
 		WHERE id = ?`,
-		time.Now(), id,
+		time.Now(), id, imageTag,
 	)
 
 	if err != nil {
