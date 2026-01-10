@@ -71,6 +71,17 @@ func (r *BuildHistoryRepository) ExistsByVersion(serviceId int64, version string
 	return true
 }
 
+func (r *BuildHistoryRepository) ExistsByImage(serviceId int64, imageTag string) bool {
+	var s entities.Service
+	err := r.db.Get(&s, `SELECT id FROM build_history WHERE service_id = ? and image_tag = ?`, serviceId, imageTag)
+
+	if err != nil {
+		return false
+	}
+
+	return true
+}
+
 func (r *BuildHistoryRepository) Delete(id int64) error {
 	res, err := r.db.Exec(`DELETE FROM build_history WHERE id = ?`, id)
 

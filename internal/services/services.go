@@ -25,10 +25,16 @@ func InitServices(
 
 	sv := &Services{
 		ApplicationService: NewApplicationService(repos.ApplicationRepository, gitService),
-		ServiceService:     NewServiceService(repos.ServiceRepository, repos.ApplicationRepository, repos.BuildHistoryRepository, gitService, dockerService),
-		PodService:         NewPodService(repos.PodRepository),
-		GitService:         gitService,
-		NodeService:        NewNodeService(repos.PodRepository, asynqClient, lb),
+		ServiceService: NewServiceService(
+			repos.ServiceRepository,
+			repos.ServiceBuildConfigRepository,
+			repos.ApplicationRepository,
+			repos.BuildHistoryRepository,
+			gitService, dockerService,
+		),
+		PodService:  NewPodService(repos.PodRepository),
+		GitService:  gitService,
+		NodeService: NewNodeService(repos.PodRepository, asynqClient, lb),
 	}
 
 	return sv, nil

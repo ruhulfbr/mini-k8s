@@ -37,14 +37,6 @@ func (s *ApplicationService) Create(app *entities.Application) error {
 		return appErrors.ApplicationAlreadyExist
 	}
 
-	if err := s.GitService.ValidateRepoAndBranch(app.GitRepo, app.GitBranch); err != nil {
-		return err
-	}
-
-	if err := s.GitService.CloneApplication(app.GitRepo, app.GitBranch, app.Name); err != nil {
-		return err
-	}
-
 	err := s.repo.Create(app)
 	if err != nil {
 		_ = s.GitService.RemoveApplicationDir(app.Name)

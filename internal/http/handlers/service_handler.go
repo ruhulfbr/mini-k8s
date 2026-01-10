@@ -20,14 +20,14 @@ func NewServiceHandler(s *services.ServiceService) *ServiceHandler {
 }
 
 func (h *ServiceHandler) ListByApplication(c echo.Context) error {
-	appID, _ := strconv.ParseInt(c.Param("appId"), 10, 64)
+	appId, _ := strconv.ParseInt(c.Param("appId"), 10, 64)
 	typ := c.QueryParam("type")
 	var filter *string
 	if typ != "" {
 		filter = &typ
 	}
 
-	serviceList, err := h.service.ListByApplication(appID, filter)
+	serviceList, err := h.service.ListByApplication(appId, filter)
 
 	if err != nil {
 		return err
@@ -64,15 +64,30 @@ func (h *ServiceHandler) Create(c echo.Context) error {
 		Name:          req.Name,
 		IP:            req.IP,
 		Port:          req.Port,
-		ContextPath:   req.ContextPath,
 		Replicas:      req.Replicas,
 		CPU:           req.CPU,
 		Memory:        req.Memory,
 		Path:          req.Path,
 		Type:          entities.ServiceType(req.Type),
+		DeployMode:    entities.DeployMode(req.DeployMode),
 	}
 
-	if err := h.service.Create(s); err != nil {
+	if s.DeployMode == entities.DeployModeImage {
+		s.Image = req.Image
+	}
+
+	var cfg *entities.ServiceBuildConfig
+	if s.DeployMode == entities.DeployModeBuild {
+		cfg = &entities.ServiceBuildConfig{
+			ServiceId:         s.Id,
+			GitRepo:           req.Build.GitRepo,
+			GitBranch:         req.Build.GitBranch,
+			DockerContextPath: req.Build.DockerContextPath,
+			DockerfileName:    req.Build.DockerfileName,
+		}
+	}
+
+	if err := h.service.Create(s, cfg); err != nil {
 		return err
 	}
 
@@ -97,16 +112,35 @@ func (h *ServiceHandler) Update(c echo.Context) error {
 		Name:          req.Name,
 		IP:            req.IP,
 		Port:          req.Port,
-		ContextPath:   req.ContextPath,
 		Replicas:      req.Replicas,
 		CPU:           req.CPU,
 		Memory:        req.Memory,
 		Path:          req.Path,
 		Type:          entities.ServiceType(req.Type),
+		DeployMode:    entities.DeployMode(req.DeployMode),
+	}
+
+	if s.DeployMode == entities.DeployModeImage {
+		s.Image = req.Image
 	}
 
 	if err := h.service.Update(s); err != nil {
 		return err
+	}
+
+	if s.DeployMode == entities.DeployModeBuild {
+		cfg := entities.ServiceBuildConfig{
+			ServiceId:         s.Id,
+			GitRepo:           req.Build.GitRepo,
+			GitBranch:         req.Build.GitBranch,
+			DockerContextPath: req.Build.DockerContextPath,
+			DockerfileName:    req.Build.DockerfileName,
+		}
+		err := h.service.UpdateBuildConfig(&cfg)
+
+		if err != nil {
+			return err
+		}
 	}
 
 	return responses.OK(c, s)
@@ -150,7 +184,7 @@ func (h *ServiceHandler) Build(c echo.Context) error {
 		return err
 	}
 
-	service, err := h.service.Build(appId, id, req.Version)
+	service, err := h.service.BuildDockerImage(appId, id, req.Version)
 	if err != nil {
 		return err
 	}

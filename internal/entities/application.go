@@ -2,11 +2,18 @@ package entities
 
 import "time"
 
+type ApplicationStatus int
+
+const (
+	ApplicationPending ApplicationStatus = 0
+	ApplicationRunning ApplicationStatus = 1
+)
+
 type Application struct {
-	Id        int64     `json:"id" db:"id"`
-	Name      string    `json:"name" db:"name"`
-	GitRepo   string    `json:"git_repo" db:"git_repo"`
-	GitBranch string    `json:"git_branch" db:"git_branch"`
-	CreatedAt time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
+	Id          int64             `json:"id" db:"id"`
+	Name        string            `json:"name" db:"name"`
+	Description *string           `json:"description" db:"description"`
+	Status      ApplicationStatus `json:"status" db:"status"`
+	CreatedAt   time.Time         `json:"created_at" db:"created_at"`
+	UpdatedAt   time.Time         `json:"updated_at" db:"updated_at"`
 }

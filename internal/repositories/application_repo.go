@@ -90,19 +90,19 @@ func (r *ApplicationRepository) ExistsByNameExceptId(name string, id int64) bool
 
 func (r *ApplicationRepository) Create(a *entities.Application) error {
 	return r.db.QueryRowx(`
-		INSERT INTO applications (name, git_repo, git_branch)
-		VALUES (?, ?, ?)
+		INSERT INTO applications (name, description)
+		VALUES (?, ?)
 		RETURNING id, created_at, updated_at`,
-		a.Name, a.GitRepo, a.GitBranch).
+		a.Name, a.Description).
 		Scan(&a.Id, &a.CreatedAt, &a.UpdatedAt)
 }
 
 func (r *ApplicationRepository) Update(app *entities.Application) error {
 	res, err := r.db.Exec(`
 		UPDATE applications
-		SET name = ?, git_repo = ?, git_branch = ?, updated_at = CURRENT_TIMESTAMP
+		SET name = ?, description = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?
-	`, app.Name, app.GitRepo, app.GitBranch, app.Id)
+	`, app.Name, app.Description, app.Id)
 
 	if err != nil {
 		return err

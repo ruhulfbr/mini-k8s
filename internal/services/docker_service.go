@@ -1,9 +1,10 @@
 package services
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"os"
+	"io"
 	"os/exec"
 	"path/filepath"
 
@@ -12,15 +13,25 @@ import (
 	"github.com/ruhulfbr/mini-k8s/internal/appErrors"
 	"github.com/ruhulfbr/mini-k8s/internal/config"
 	"github.com/ruhulfbr/mini-k8s/internal/entities"
+	"github.com/ruhulfbr/mini-k8s/internal/infrastructure/logger"
 	"github.com/ruhulfbr/mini-k8s/internal/utils/fsUtils"
 )
 
 type DockerService struct {
 	dockerConfig config.DockerConfig
+	cli          *client.Client
 }
 
 func NewDockerService() *DockerService {
-	return &DockerService{dockerConfig: config.GetDockerConfig()}
+	cli, err := client.New(client.FromEnv)
+	if err != nil {
+		panic(fmt.Sprintf("failed to create docker client: %v", err))
+	}
+
+	return &DockerService{
+		dockerConfig: config.GetDockerConfig(),
+		cli:          cli,
+	}
 }
 
 func (ds *DockerService) ValidateDockerContext(appName string, contextPath string) error {
@@ -36,10 +47,16 @@ func (ds *DockerService) ValidateDockerContext(appName string, contextPath strin
 	return nil
 }
 
-func (ds *DockerService) BuildImage(service *entities.Service, appName string) (string, error) {
-	imageTag := ds.generateImageTag(service.Name)
-	buildContext := filepath.Join(ds.dockerConfig.ApplicationPath, appName)
-	dockerfilePath := filepath.Join(buildContext, service.ContextPath)
+func (ds *DockerService) BuildImage(buildConfig *entities.ServiceBuildConfig, appName string, serviceName string) (string, error) {
+	imageTag := ds.generateImageTag(serviceName)
+
+	dockerContextPath := ""
+	if buildConfig.DockerContextPath != "." {
+		dockerContextPath = buildConfig.DockerContextPath
+	}
+
+	buildContext := filepath.Join(ds.dockerConfig.ApplicationPath, appName, dockerContextPath)
+	dockerfilePath := filepath.Join(buildContext, buildConfig.DockerfileName)
 
 	cmd := exec.CommandContext(
 		context.Background(),
@@ -49,14 +66,38 @@ func (ds *DockerService) BuildImage(service *entities.Service, appName string) (
 		buildContext,
 	)
 
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	//cmd.Stdout = os.Stdout
+	//cmd.Stderr = os.Stderr
+
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
 
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("docker build failed for application: %s, Service: %s, Image Tag: %s,: %w", appName, service.Name, imageTag, err)
+		return "", fmt.Errorf(
+			"docker build failed (app=%s service=%s tag=%s): %w",
+			appName,
+			serviceName,
+			imageTag,
+			err,
+		)
 	}
 
 	return imageTag, nil
+}
+
+func (ds *DockerService) PullImage(imageTag string) error {
+	ctx := context.Background()
+
+	reader, err := ds.cli.ImagePull(ctx, imageTag, client.ImagePullOptions{})
+	if err != nil {
+		logger.Error(ctx, "Failed to pull docker image", err)
+		return err
+	}
+	defer reader.Close()
+
+	_, err = io.Copy(io.Discard, reader)
+	return err
 }
 
 func (ds *DockerService) generateImageTag(service string) string {
