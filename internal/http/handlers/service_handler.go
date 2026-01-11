@@ -73,13 +73,12 @@ func (h *ServiceHandler) Create(c echo.Context) error {
 	}
 
 	if s.DeployMode == entities.DeployModeImage {
-		s.Image = req.Image
+		s.CurrentImageTag = req.Image
 	}
 
 	var cfg *entities.ServiceBuildConfig
 	if s.DeployMode == entities.DeployModeBuild {
 		cfg = &entities.ServiceBuildConfig{
-			ServiceId:         s.Id,
 			GitRepo:           req.Build.GitRepo,
 			GitBranch:         req.Build.GitBranch,
 			DockerContextPath: req.Build.DockerContextPath,
@@ -121,26 +120,21 @@ func (h *ServiceHandler) Update(c echo.Context) error {
 	}
 
 	if s.DeployMode == entities.DeployModeImage {
-		s.Image = req.Image
+		s.CurrentImageTag = req.Image
 	}
-
-	if err := h.service.Update(s); err != nil {
-		return err
-	}
-
+	var cfg *entities.ServiceBuildConfig
 	if s.DeployMode == entities.DeployModeBuild {
-		cfg := entities.ServiceBuildConfig{
+		cfg = &entities.ServiceBuildConfig{
 			ServiceId:         s.Id,
 			GitRepo:           req.Build.GitRepo,
 			GitBranch:         req.Build.GitBranch,
 			DockerContextPath: req.Build.DockerContextPath,
 			DockerfileName:    req.Build.DockerfileName,
 		}
-		err := h.service.UpdateBuildConfig(&cfg)
+	}
 
-		if err != nil {
-			return err
-		}
+	if err := h.service.Update(s, cfg); err != nil {
+		return err
 	}
 
 	return responses.OK(c, s)

@@ -27,9 +27,6 @@ type Service struct {
 	Path            string        `db:"path"            json:"path"`
 	Type            ServiceType   `db:"type"            json:"type"`
 	DeployMode      DeployMode    `db:"deploy_mode"          json:"deploy_mode"`
-	Image           *string       `db:"image"             json:"image"`
-	ContextPath     *string       `db:"context_path"    json:"context_path"`
-	DockerFile      *string       `db:"docker_file"    json:"docker_file"`
 	CurrentImageTag *string       `db:"current_image_tag" json:"current_image_tag"`
 	CurrentVersion  *string       `db:"current_version"   json:"current_version"`
 	Status          ServiceStatus `db:"status"          json:"status"`

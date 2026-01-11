@@ -92,7 +92,7 @@ func (r *ServiceRepository) Create(s *entities.Service) error {
 	return r.db.QueryRow(`
 		INSERT INTO services (
 			application_id, name, ip, port,
-			replicas, cpu, memory, path, type, image
+			replicas, cpu, memory, path, type, current_image_tag
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		RETURNING id, created_at, updated_at`,
 		s.ApplicationId,
@@ -104,8 +104,8 @@ func (r *ServiceRepository) Create(s *entities.Service) error {
 		s.Memory,
 		s.Path,
 		s.Type,
-		s.Image,
-	).Scan(&s.Id, &s.CreatedAt, &s.UpdatedAt)
+		s.CurrentImageTag,
+	).Scan(&s.Id, &s.Status, &s.CreatedAt, &s.UpdatedAt)
 }
 
 func (r *ServiceRepository) Update(s *entities.Service) error {
@@ -119,7 +119,8 @@ func (r *ServiceRepository) Update(s *entities.Service) error {
 			cpu = :cpu,
 			memory = :memory,
 			path = :path,
-			type = :type
+			type = :type,
+			current_image_tag= :current_image_tag
 		WHERE id = :id
 	`, s)
 

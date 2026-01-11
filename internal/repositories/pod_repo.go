@@ -43,7 +43,6 @@ func (r *PodRepository) ListByService(serviceID int64, status *string) ([]entiti
 		var p entities.Pod
 		if err := rows.Scan(
 			&p.Id,
-			&p.ApplicationId,
 			&p.ServiceId,
 			&p.Name,
 			&p.Status,
@@ -62,7 +61,6 @@ func (r *PodRepository) Create(p *entities.Pod) error {
 		INSERT INTO pods (application_id, node_id, name, status)
 		VALUES (?, ?, ?, ?)
 		RETURNING id, created_at`,
-		p.ApplicationId,
 		p.ServiceId,
 		p.Name,
 		p.Status,

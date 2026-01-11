@@ -18,7 +18,7 @@ type ServiceService struct {
 }
 
 func NewServiceService(
-	r *repositories.ServiceRepository,
+	repo *repositories.ServiceRepository,
 	buildConfigRepo *repositories.ServiceBuildConfigRepository,
 	appRepo *repositories.ApplicationRepository,
 	buildRepo *repositories.BuildHistoryRepository,
@@ -26,7 +26,7 @@ func NewServiceService(
 	dockerService *DockerService,
 ) *ServiceService {
 	return &ServiceService{
-		repo:            r,
+		repo:            repo,
 		buildConfigRepo: buildConfigRepo,
 		appRepo:         appRepo,
 		buildRepo:       buildRepo,
@@ -62,6 +62,12 @@ func (s *ServiceService) GetByID(appId int64, id int64) (*entities.Service, erro
 }
 
 func (s *ServiceService) Create(service *entities.Service, bCfg *entities.ServiceBuildConfig) error {
+	if bCfg != nil {
+		if err := s.gitService.ValidateRepoAndBranch(bCfg.GitRepo, bCfg.GitBranch); err != nil {
+			return err
+		}
+	}
+
 	application, err := s.appRepo.GetByID(service.ApplicationId)
 	if err != nil || application == nil {
 		return appErrors.NoApplicationFound
@@ -83,10 +89,10 @@ func (s *ServiceService) Create(service *entities.Service, bCfg *entities.Servic
 	}
 
 	if bCfg != nil {
+		bCfg.ServiceId = service.Id
 		if err := s.buildConfigRepo.Create(bCfg); err != nil {
 			return err
 		}
-
 		// Enqueue New Job to clone application and validate docker context + docker file
 	}
 
@@ -94,6 +100,12 @@ func (s *ServiceService) Create(service *entities.Service, bCfg *entities.Servic
 }
 
 func (s *ServiceService) Update(service *entities.Service, bCfg *entities.ServiceBuildConfig) error {
+	if bCfg != nil {
+		if err := s.gitService.ValidateRepoAndBranch(bCfg.GitRepo, bCfg.GitBranch); err != nil {
+			return err
+		}
+	}
+
 	application, err := s.appRepo.GetByID(service.ApplicationId)
 	if err != nil || application == nil {
 		return appErrors.NoApplicationFound

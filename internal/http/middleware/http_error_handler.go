@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -108,6 +109,26 @@ func validationMessage(fe validator.FieldError) string {
 	switch fe.Tag() {
 	case "required":
 		return "This field is required"
+	case "required_if":
+		parts := strings.Split(fe.Param(), " ")
+		if len(parts) == 2 {
+			return fmt.Sprintf(
+				"This field is required when %s is %s",
+				parts[0],
+				parts[1],
+			)
+		}
+		return "This field is required based on another field"
+	case "excluded_if":
+		parts := strings.Split(fe.Param(), " ")
+		if len(parts) == 2 {
+			return fmt.Sprintf(
+				"This field must not be provided when %s is %s",
+				parts[0],
+				parts[1],
+			)
+		}
+		return "This field is not allowed based on another field"
 	case "email":
 		return "Invalid email address"
 	case "min":
