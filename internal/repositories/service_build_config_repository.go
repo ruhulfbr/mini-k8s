@@ -76,14 +76,9 @@ func (r *ServiceBuildConfigRepository) GetByServiceId(serviceId int64) (*entitie
 	return &cfg, nil
 }
 
-func (r *ServiceBuildConfigRepository) Delete(serviceId int) error {
-	res, err := r.db.Exec(`DELETE FROM service_build_configs WHERE service_id = ?`, serviceId)
+func (r *ServiceBuildConfigRepository) Delete(serviceId int64) error {
+	_, err := r.db.Exec(`DELETE FROM service_build_configs WHERE service_id = ?`, serviceId)
 
-	if err != nil {
-		return err
-	}
-
-	_, err = res.RowsAffected()
 	if err != nil {
 		return err
 	}

@@ -1,11 +1,11 @@
 package services
 
 import (
-	"fmt"
 	"regexp"
 
 	"github.com/ruhulfbr/mini-k8s/internal/appErrors"
 	"github.com/ruhulfbr/mini-k8s/internal/entities"
+	"github.com/ruhulfbr/mini-k8s/internal/infrastructure/logger"
 	"github.com/ruhulfbr/mini-k8s/internal/repositories"
 )
 
@@ -86,18 +86,12 @@ func (s *ServiceService) Create(service *entities.Service, bCfg *entities.Servic
 	}
 
 	if err := s.repo.Create(service); err != nil {
-
-		fmt.Println("create service error", err)
-
 		return err
 	}
 
 	if bCfg != nil {
 		bCfg.ServiceId = service.Id
 		if err := s.buildConfigRepo.Create(bCfg); err != nil {
-
-			fmt.Println("create build config error", err)
-
 			return err
 		}
 		// Enqueue New Job to clone application and validate docker context + docker file
@@ -118,7 +112,8 @@ func (s *ServiceService) Update(service *entities.Service, bCfg *entities.Servic
 		return appErrors.NoApplicationFound
 	}
 
-	if !s.repo.IsExists(service.ApplicationId, service.Id) {
+	existing, err := s.repo.GetById(service.ApplicationId, service.Id)
+	if err != nil || existing == nil {
 		return appErrors.NoServiceFound
 	}
 
@@ -131,11 +126,19 @@ func (s *ServiceService) Update(service *entities.Service, bCfg *entities.Servic
 	}
 
 	if bCfg != nil {
-		if err := s.buildConfigRepo.Update(bCfg); err != nil {
+		if err := s.updateBuildConfig(bCfg); err != nil {
+			logger.Error(nil, "Update build config error", err)
 			return err
 		}
 
 		// Enqueue New Job to clone application and validate docker context + docker file
+	}
+
+	if existing.DeployMode == entities.DeployModeBuild && service.DeployMode == entities.DeployModeImage {
+		if err := s.buildConfigRepo.Delete(service.Id); err != nil {
+			logger.Error(nil, "Delete build config error while updated the deploy mode", err)
+			return err
+		}
 	}
 
 	return nil
