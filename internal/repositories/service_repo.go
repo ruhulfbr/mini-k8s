@@ -94,7 +94,7 @@ func (r *ServiceRepository) Create(s *entities.Service) error {
 			application_id, name, ip, port,
 			replicas, cpu, memory, path, type, current_image_tag
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		RETURNING id, created_at, updated_at`,
+		RETURNING id, status, created_at, updated_at`,
 		s.ApplicationId,
 		s.Name,
 		s.IP,

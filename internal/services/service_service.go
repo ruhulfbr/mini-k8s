@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"regexp"
 
 	"github.com/ruhulfbr/mini-k8s/internal/appErrors"
@@ -85,12 +86,18 @@ func (s *ServiceService) Create(service *entities.Service, bCfg *entities.Servic
 	}
 
 	if err := s.repo.Create(service); err != nil {
+
+		fmt.Println("create service error", err)
+
 		return err
 	}
 
 	if bCfg != nil {
 		bCfg.ServiceId = service.Id
 		if err := s.buildConfigRepo.Create(bCfg); err != nil {
+
+			fmt.Println("create build config error", err)
+
 			return err
 		}
 		// Enqueue New Job to clone application and validate docker context + docker file
