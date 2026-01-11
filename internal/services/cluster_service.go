@@ -9,24 +9,24 @@ import (
 	"github.com/ruhulfbr/mini-k8s/internal/repositories"
 )
 
-type ServiceService struct {
-	repo            *repositories.ServiceRepository
+type ClusterService struct {
+	repo            *repositories.ClusterRepository
 	appRepo         *repositories.ApplicationRepository
-	buildConfigRepo *repositories.ServiceBuildConfigRepository
-	buildRepo       *repositories.BuildHistoryRepository
+	buildConfigRepo *repositories.ClusterBuildConfigRepository
+	buildRepo       *repositories.ClusterBuildRepository
 	gitService      *GitService
 	dockerService   *DockerService
 }
 
-func NewServiceService(
-	repo *repositories.ServiceRepository,
-	buildConfigRepo *repositories.ServiceBuildConfigRepository,
+func NewClusterService(
+	repo *repositories.ClusterRepository,
+	buildConfigRepo *repositories.ClusterBuildConfigRepository,
 	appRepo *repositories.ApplicationRepository,
-	buildRepo *repositories.BuildHistoryRepository,
+	buildRepo *repositories.ClusterBuildRepository,
 	gitService *GitService,
 	dockerService *DockerService,
-) *ServiceService {
-	return &ServiceService{
+) *ClusterService {
+	return &ClusterService{
 		repo:            repo,
 		buildConfigRepo: buildConfigRepo,
 		appRepo:         appRepo,
@@ -36,61 +36,61 @@ func NewServiceService(
 	}
 }
 
-func (s *ServiceService) ListByApplication(appId int64, serviceType *string) ([]entities.Service, error) {
+func (s *ClusterService) ListByApplication(appId int64, clusterType *string) ([]entities.Cluster, error) {
 	if s.appRepo.ExistsById(appId) == false {
 		return nil, appErrors.NoApplicationFound
 	}
 
-	return s.repo.ListByApplication(appId, serviceType)
+	return s.repo.ListByApplication(appId, clusterType)
 }
 
-func (s *ServiceService) GetByID(appId int64, id int64) (*entities.Service, error) {
+func (s *ClusterService) GetByID(appId int64, id int64) (*entities.Cluster, error) {
 	application, err := s.appRepo.GetByID(appId)
 	if err != nil || application == nil {
 		return nil, appErrors.NoApplicationFound
 	}
 
-	service, err := s.repo.GetById(appId, id)
+	cluster, err := s.repo.GetById(appId, id)
 	if err != nil {
 		return nil, err
 	}
 
-	if service == nil {
-		return nil, appErrors.NoServiceFound
+	if cluster == nil {
+		return nil, appErrors.NoClusterFound
 	}
 
-	return service, nil
+	return cluster, nil
 }
 
-func (s *ServiceService) Create(service *entities.Service, bCfg *entities.ServiceBuildConfig) error {
+func (s *ClusterService) Create(cluster *entities.Cluster, bCfg *entities.ClusterBuildConfig) error {
 	if bCfg != nil {
 		if err := s.gitService.ValidateRepoAndBranch(bCfg.GitRepo, bCfg.GitBranch); err != nil {
 			return err
 		}
 	}
 
-	application, err := s.appRepo.GetByID(service.ApplicationId)
+	application, err := s.appRepo.GetByID(cluster.ApplicationId)
 	if err != nil || application == nil {
 		return appErrors.NoApplicationFound
 	}
 
-	if s.repo.ExistsByName(service.ApplicationId, service.Name) {
-		return appErrors.ServiceAlreadyExist
+	if s.repo.ExistsByName(cluster.ApplicationId, cluster.Name) {
+		return appErrors.ClusterAlreadyExist
 	}
 
-	if service.Type == "" {
-		service.Type = entities.ServiceTypeHTTP
+	if cluster.Type == "" {
+		cluster.Type = entities.ClusterTypeHTTP
 	}
-	if service.Replicas < 1 {
-		service.Replicas = 1
+	if cluster.Replicas < 1 {
+		cluster.Replicas = 1
 	}
 
-	if err := s.repo.Create(service); err != nil {
+	if err := s.repo.Create(cluster); err != nil {
 		return err
 	}
 
 	if bCfg != nil {
-		bCfg.ServiceId = service.Id
+		bCfg.ClusterId = cluster.Id
 		if err := s.buildConfigRepo.Create(bCfg); err != nil {
 			return err
 		}
@@ -100,28 +100,28 @@ func (s *ServiceService) Create(service *entities.Service, bCfg *entities.Servic
 	return nil
 }
 
-func (s *ServiceService) Update(service *entities.Service, bCfg *entities.ServiceBuildConfig) error {
+func (s *ClusterService) Update(cluster *entities.Cluster, bCfg *entities.ClusterBuildConfig) error {
 	if bCfg != nil {
 		if err := s.gitService.ValidateRepoAndBranch(bCfg.GitRepo, bCfg.GitBranch); err != nil {
 			return err
 		}
 	}
 
-	application, err := s.appRepo.GetByID(service.ApplicationId)
+	application, err := s.appRepo.GetByID(cluster.ApplicationId)
 	if err != nil || application == nil {
 		return appErrors.NoApplicationFound
 	}
 
-	existing, err := s.repo.GetById(service.ApplicationId, service.Id)
+	existing, err := s.repo.GetById(cluster.ApplicationId, cluster.Id)
 	if err != nil || existing == nil {
-		return appErrors.NoServiceFound
+		return appErrors.NoClusterFound
 	}
 
-	if s.repo.ExistsByNameExceptId(service.ApplicationId, service.Name, service.Id) {
-		return appErrors.ServiceAlreadyExist
+	if s.repo.ExistsByNameExceptId(cluster.ApplicationId, cluster.Name, cluster.Id) {
+		return appErrors.ClusterAlreadyExist
 	}
 
-	if err := s.repo.Update(service); err != nil {
+	if err := s.repo.Update(cluster); err != nil {
 		return err
 	}
 
@@ -134,8 +134,8 @@ func (s *ServiceService) Update(service *entities.Service, bCfg *entities.Servic
 		// Enqueue New Job to clone application and validate docker context + docker file
 	}
 
-	if existing.DeployMode == entities.DeployModeBuild && service.DeployMode == entities.DeployModeImage {
-		if err := s.buildConfigRepo.Delete(service.Id); err != nil {
+	if existing.DeployMode == entities.DeployModeBuild && cluster.DeployMode == entities.DeployModeImage {
+		if err := s.buildConfigRepo.Delete(cluster.Id); err != nil {
 			logger.Error(nil, "Delete build config error while updated the deploy mode", err)
 			return err
 		}
@@ -144,7 +144,7 @@ func (s *ServiceService) Update(service *entities.Service, bCfg *entities.Servic
 	return nil
 }
 
-func (s *ServiceService) Delete(appId int64, id int64) error {
+func (s *ClusterService) Delete(appId int64, id int64) error {
 	_, err := s.GetByID(appId, id)
 	if err != nil {
 		return err
@@ -159,16 +159,16 @@ func (s *ServiceService) Delete(appId int64, id int64) error {
 	return s.repo.Delete(id)
 }
 
-func (s *ServiceService) GetBuildHistory(appId int64, id int64) ([]entities.BuildHistory, error) {
+func (s *ClusterService) GetBuildHistory(appId int64, id int64) ([]entities.ClusterBuild, error) {
 	_, err := s.GetByID(appId, id)
 	if err != nil {
 		return nil, err
 	}
 
-	return s.buildRepo.GetByService(id)
+	return s.buildRepo.GetByCluster(id)
 }
 
-func (s *ServiceService) BuildDockerImage(appId int64, serviceId int64, version string) (*entities.BuildHistory, error) {
+func (s *ClusterService) BuildDockerImage(appId int64, clusterId int64, version string) (*entities.ClusterBuild, error) {
 	if err := validateVersionText(version); err != nil {
 		return nil, err
 	}
@@ -178,20 +178,20 @@ func (s *ServiceService) BuildDockerImage(appId int64, serviceId int64, version 
 		return nil, appErrors.NoApplicationFound
 	}
 
-	service, err := s.repo.GetById(appId, serviceId)
-	if err != nil || service == nil {
-		return nil, appErrors.NoServiceFound
+	cluster, err := s.repo.GetById(appId, clusterId)
+	if err != nil || cluster == nil {
+		return nil, appErrors.NoClusterFound
 	}
 
-	if service.DeployMode != entities.DeployModeBuild {
+	if cluster.DeployMode != entities.DeployModeBuild {
 		return nil, appErrors.InvalidDeployMode
 	}
 
-	if s.buildRepo.ExistsByVersion(serviceId, version) {
+	if s.buildRepo.ExistsByVersion(clusterId, version) {
 		return nil, appErrors.DockerDuplicateVersion
 	}
 
-	buildConfig, err := s.buildConfigRepo.GetByServiceId(serviceId)
+	buildConfig, err := s.buildConfigRepo.GetByclusterId(clusterId)
 	if err != nil || buildConfig == nil {
 		return nil, appErrors.NoBuildConfigFound
 	}
@@ -200,26 +200,25 @@ func (s *ServiceService) BuildDockerImage(appId int64, serviceId int64, version 
 		return nil, err
 	}
 
-	imageTag, err := s.dockerService.BuildImage(buildConfig, application.Name, service.Name)
+	imageTag, err := s.dockerService.BuildImage(buildConfig, application.Name, cluster.Name)
 	if err != nil {
 		return nil, err
 	}
 
-	buildHistory := &entities.BuildHistory{
-		ApplicationId: application.Id,
-		ServiceId:     service.Id,
-		Version:       version,
-		ImageTag:      imageTag,
+	clusterBuild := &entities.ClusterBuild{
+		ClusterId: cluster.Id,
+		Version:   version,
+		ImageTag:  imageTag,
 	}
 
-	if err := s.buildRepo.Create(buildHistory); err != nil {
+	if err := s.buildRepo.Create(clusterBuild); err != nil {
 		return nil, err
 	}
 
-	return buildHistory, nil
+	return clusterBuild, nil
 }
 
-func (s *ServiceService) PullDockerImage(appId int64, serviceId int64, version string, image string) (*entities.BuildHistory, error) {
+func (s *ClusterService) PullDockerImage(appId int64, clusterId int64, version string, image string) (*entities.ClusterBuild, error) {
 	if err := validateVersionText(version); err != nil {
 		return nil, err
 	}
@@ -229,20 +228,20 @@ func (s *ServiceService) PullDockerImage(appId int64, serviceId int64, version s
 		return nil, appErrors.NoApplicationFound
 	}
 
-	service, err := s.repo.GetById(appId, serviceId)
-	if err != nil || service == nil {
-		return nil, appErrors.NoServiceFound
+	cluster, err := s.repo.GetById(appId, clusterId)
+	if err != nil || cluster == nil {
+		return nil, appErrors.NoClusterFound
 	}
 
-	if service.DeployMode != entities.DeployModeImage {
+	if cluster.DeployMode != entities.DeployModeImage {
 		return nil, appErrors.InvalidDeployMode
 	}
 
-	if s.buildRepo.ExistsByImage(serviceId, image) {
+	if s.buildRepo.ExistsByImage(clusterId, image) {
 		return nil, appErrors.DockerDuplicateImageTag
 	}
 
-	if s.buildRepo.ExistsByVersion(serviceId, version) {
+	if s.buildRepo.ExistsByVersion(clusterId, version) {
 		return nil, appErrors.DockerDuplicateVersion
 	}
 
@@ -251,24 +250,23 @@ func (s *ServiceService) PullDockerImage(appId int64, serviceId int64, version s
 		return nil, err
 	}
 
-	buildHistory := &entities.BuildHistory{
-		ApplicationId: application.Id,
-		ServiceId:     service.Id,
-		Version:       version,
-		ImageTag:      image,
+	clusterBuild := &entities.ClusterBuild{
+		ClusterId: cluster.Id,
+		Version:   version,
+		ImageTag:  image,
 	}
 
-	if err := s.buildRepo.Create(buildHistory); err != nil {
+	if err := s.buildRepo.Create(clusterBuild); err != nil {
 		return nil, err
 	}
 
-	return buildHistory, nil
+	return clusterBuild, nil
 }
 
 // ---------------------- Private Methods ------------------------------
 
-func (s *ServiceService) updateBuildConfig(cfg *entities.ServiceBuildConfig) error {
-	exist, err := s.buildConfigRepo.GetByServiceId(cfg.ServiceId)
+func (s *ClusterService) updateBuildConfig(cfg *entities.ClusterBuildConfig) error {
+	exist, err := s.buildConfigRepo.GetByclusterId(cfg.ClusterId)
 
 	if err != nil || exist == nil {
 		return s.buildConfigRepo.Create(cfg)

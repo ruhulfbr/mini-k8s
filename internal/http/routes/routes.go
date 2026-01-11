@@ -36,20 +36,20 @@ func ConfigureRoutes(
 	app.PUT("/:id", appHandlers.ApplicationHandler.Update)
 	app.DELETE("/:id", appHandlers.ApplicationHandler.Delete)
 
-	svc := api.Group("/applications/:appId/services")
-	svc.GET("", appHandlers.ServiceHandler.ListByApplication)
-	svc.POST("", appHandlers.ServiceHandler.Create)
-	svc.GET("/:id", appHandlers.ServiceHandler.Show)
-	svc.PUT("/:id", appHandlers.ServiceHandler.Update)
-	svc.DELETE("/:id", appHandlers.ServiceHandler.Delete)
+	svc := api.Group("/applications/:appId/clusters")
+	svc.GET("", appHandlers.ClusterHandler.ListByApplication)
+	svc.POST("", appHandlers.ClusterHandler.Create)
+	svc.GET("/:id", appHandlers.ClusterHandler.Show)
+	svc.PUT("/:id", appHandlers.ClusterHandler.Update)
+	svc.DELETE("/:id", appHandlers.ClusterHandler.Delete)
 
-	build := api.Group("/applications/:appId/services/:id/build")
+	build := api.Group("/applications/:appId/clusters/:id/build")
 
-	build.GET("", appHandlers.ServiceHandler.BuildHistory)
-	build.POST("", appHandlers.ServiceHandler.Build)
+	build.GET("", appHandlers.ClusterHandler.Builds)
+	build.POST("", appHandlers.ClusterHandler.Build)
 
-	pods := api.Group("/services/:serviceId/pods")
-	pods.GET("", appHandlers.PodHandler.ListByService)
+	pods := api.Group("/clusters/:id/pods")
+	pods.GET("", appHandlers.PodHandler.ListByCluster)
 	pods.POST("", appHandlers.PodHandler.Create)
 	pods.DELETE("/:id", appHandlers.PodHandler.Delete)
 

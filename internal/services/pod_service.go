@@ -15,8 +15,8 @@ func NewPodService(r *repositories.PodRepository) *PodService {
 	return &PodService{repo: r}
 }
 
-func (s *PodService) ListByService(serviceId int64, status *string) ([]entities.Pod, error) {
-	return s.repo.ListByService(serviceId, status)
+func (s *PodService) ListByCluster(clusterId int64, status *string) ([]entities.Pod, error) {
+	return s.repo.ListByCluster(clusterId, status)
 }
 
 func (s *PodService) Create(pod *entities.Pod) error {

@@ -10,7 +10,7 @@ type PodRepository struct {
 }
 
 type PodRepositoryInterface interface {
-	ListByService(serviceID int64, status *string) ([]entities.Pod, error)
+	ListByCluster(clusterId int64, status *string) ([]entities.Pod, error)
 	Create(pod *entities.Pod) error
 	Update(pod *entities.Pod) error
 	Delete(id int64) error
@@ -20,12 +20,12 @@ func NewPodRepository(db *sqlx.DB) *PodRepository {
 	return &PodRepository{db: db}
 }
 
-func (r *PodRepository) ListByService(serviceID int64, status *string) ([]entities.Pod, error) {
+func (r *PodRepository) ListByCluster(clusterId int64, status *string) ([]entities.Pod, error) {
 	query := `
 		SELECT id, application_id, node_id, name, status, created_at
 		FROM pods
 		WHERE node_id = ?`
-	args := []any{serviceID}
+	args := []any{clusterId}
 
 	if status != nil {
 		query += " AND status = ?"
@@ -43,7 +43,7 @@ func (r *PodRepository) ListByService(serviceID int64, status *string) ([]entiti
 		var p entities.Pod
 		if err := rows.Scan(
 			&p.Id,
-			&p.ServiceId,
+			&p.ClusterId,
 			&p.Name,
 			&p.Status,
 			&p.CreatedAt,
@@ -58,10 +58,10 @@ func (r *PodRepository) ListByService(serviceID int64, status *string) ([]entiti
 
 func (r *PodRepository) Create(p *entities.Pod) error {
 	return r.db.QueryRow(`
-		INSERT INTO pods (application_id, node_id, name, status)
+		INSERT INTO pods (cluster_id, name, status)
 		VALUES (?, ?, ?, ?)
 		RETURNING id, created_at`,
-		p.ServiceId,
+		p.ClusterId,
 		p.Name,
 		p.Status,
 	).Scan(&p.Id, &p.CreatedAt)

@@ -30,7 +30,7 @@ func (w *Worker) HandleDeploy() asynq.HandlerFunc {
 		//	return fmt.Errorf("[Deploy] image build failed: %v", err)
 		//}
 		//
-		//containerName := w.getContainerName(payload.Id, payload.Service)
+		//containerName := w.getContainerName(payload.Id, payload.Cluster)
 		//
 		//resp, err := cli.ContainerCreate(ctx, client.ContainerCreateOptions{
 		//	Config: &container.Config{

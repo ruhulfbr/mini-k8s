@@ -8,7 +8,7 @@ import (
 
 type Services struct {
 	ApplicationService *ApplicationService
-	ServiceService     *ServiceService
+	ClusterService     *ClusterService
 	PodService         *PodService
 	GitService         *GitService
 	DockerService      *DockerService
@@ -25,11 +25,11 @@ func InitServices(
 
 	sv := &Services{
 		ApplicationService: NewApplicationService(repos.ApplicationRepository, gitService),
-		ServiceService: NewServiceService(
-			repos.ServiceRepository,
-			repos.ServiceBuildConfigRepository,
+		ClusterService: NewClusterService(
+			repos.ClusterRepository,
+			repos.ClusterBuildConfigRepository,
 			repos.ApplicationRepository,
-			repos.BuildHistoryRepository,
+			repos.ClusterBuildRepository,
 			gitService, dockerService,
 		),
 		PodService:  NewPodService(repos.PodRepository),

@@ -8,47 +8,46 @@ import (
 	"github.com/ruhulfbr/mini-k8s/internal/entities"
 )
 
-type BuildHistoryRepository struct {
+type ClusterBuildRepository struct {
 	db *sqlx.DB
 }
 
-type BuildHistoryRepositoryInterface interface {
-	Create(history *entities.BuildHistory) error
-	GetByService(serviceID int64) ([]entities.BuildHistory, error)
-	GetRollbackImage(serviceID int64) (*string, error)
+type ClusterBuildRepositoryInterface interface {
+	Create(history *entities.ClusterBuild) error
+	GetByCluster(clusterId int64) ([]entities.ClusterBuild, error)
+	GetRollbackImage(clusterId int64) (*string, error)
 	Delete(id int64) error
 }
 
-func NewBuildHistoryRepository(db *sqlx.DB) *BuildHistoryRepository {
-	return &BuildHistoryRepository{db: db}
+func NewClusterBuildRepository(db *sqlx.DB) *ClusterBuildRepository {
+	return &ClusterBuildRepository{db: db}
 }
 
-func (r *BuildHistoryRepository) GetByService(serviceId int64) ([]entities.BuildHistory, error) {
-	query := `SELECT * FROM build_history WHERE service_id = ? ORDER BY id DESC`
+func (r *ClusterBuildRepository) GetByCluster(clusterId int64) ([]entities.ClusterBuild, error) {
+	query := `SELECT * FROM cluster_builds WHERE cluster_id = ? ORDER BY id DESC`
 
-	var buildHistories []entities.BuildHistory
-	if err := r.db.Select(&buildHistories, query, serviceId); err != nil {
+	var clusterBuilds []entities.ClusterBuild
+	if err := r.db.Select(&clusterBuilds, query, clusterId); err != nil {
 		return nil, err
 	}
 
-	return buildHistories, nil
+	return clusterBuilds, nil
 }
 
-func (r *BuildHistoryRepository) Create(b *entities.BuildHistory) error {
+func (r *ClusterBuildRepository) Create(b *entities.ClusterBuild) error {
 	return r.db.QueryRow(`
-		INSERT INTO build_history (application_id, service_id, version, image_tag)
-		VALUES (?, ?, ?, ?)
+		INSERT INTO cluster_builds (cluster_id, version, image_tag)
+		VALUES (?, ?, ?)
 		RETURNING id, created_at`,
-		b.ApplicationId,
-		b.ServiceId,
+		b.ClusterId,
 		b.Version,
 		b.ImageTag,
 	).Scan(&b.Id, &b.CreatedAt)
 }
 
-func (r *BuildHistoryRepository) GetById(serviceId int64, id int64) (*entities.BuildHistory, error) {
-	var bh entities.BuildHistory
-	err := r.db.Get(&bh, `SELECT * FROM build_history WHERE service_id = ? and id = ?`, serviceId, id)
+func (r *ClusterBuildRepository) GetById(clusterId int64, id int64) (*entities.ClusterBuild, error) {
+	var bh entities.ClusterBuild
+	err := r.db.Get(&bh, `SELECT * FROM cluster_builds WHERE cluster_id = ? and id = ?`, clusterId, id)
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -60,9 +59,9 @@ func (r *BuildHistoryRepository) GetById(serviceId int64, id int64) (*entities.B
 	return &bh, err
 }
 
-func (r *BuildHistoryRepository) ExistsByVersion(serviceId int64, version string) bool {
-	var s entities.Service
-	err := r.db.Get(&s, `SELECT id FROM build_history WHERE service_id = ? and version = ?`, serviceId, version)
+func (r *ClusterBuildRepository) ExistsByVersion(clusterId int64, version string) bool {
+	var s entities.Cluster
+	err := r.db.Get(&s, `SELECT id FROM cluster_builds WHERE cluster_id = ? and version = ?`, clusterId, version)
 
 	if err != nil {
 		return false
@@ -71,9 +70,9 @@ func (r *BuildHistoryRepository) ExistsByVersion(serviceId int64, version string
 	return true
 }
 
-func (r *BuildHistoryRepository) ExistsByImage(serviceId int64, imageTag string) bool {
-	var s entities.Service
-	err := r.db.Get(&s, `SELECT id FROM build_history WHERE service_id = ? and image_tag = ?`, serviceId, imageTag)
+func (r *ClusterBuildRepository) ExistsByImage(clusterId int64, imageTag string) bool {
+	var cb entities.Cluster
+	err := r.db.Get(&cb, `SELECT id FROM cluster_builds WHERE cluster_id = ? and image_tag = ?`, clusterId, imageTag)
 
 	if err != nil {
 		return false
@@ -82,8 +81,8 @@ func (r *BuildHistoryRepository) ExistsByImage(serviceId int64, imageTag string)
 	return true
 }
 
-func (r *BuildHistoryRepository) Delete(id int64) error {
-	res, err := r.db.Exec(`DELETE FROM build_history WHERE id = ?`, id)
+func (r *ClusterBuildRepository) Delete(id int64) error {
+	res, err := r.db.Exec(`DELETE FROM cluster_builds WHERE id = ?`, id)
 
 	if err != nil {
 		return err

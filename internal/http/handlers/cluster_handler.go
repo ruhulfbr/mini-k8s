@@ -11,15 +11,15 @@ import (
 	"github.com/ruhulfbr/mini-k8s/internal/services"
 )
 
-type ServiceHandler struct {
-	service *services.ServiceService
+type ClusterHandler struct {
+	service *services.ClusterService
 }
 
-func NewServiceHandler(s *services.ServiceService) *ServiceHandler {
-	return &ServiceHandler{service: s}
+func NewClusterHandler(s *services.ClusterService) *ClusterHandler {
+	return &ClusterHandler{service: s}
 }
 
-func (h *ServiceHandler) ListByApplication(c echo.Context) error {
+func (h *ClusterHandler) ListByApplication(c echo.Context) error {
 	appId, _ := strconv.ParseInt(c.Param("appId"), 10, 64)
 	typ := c.QueryParam("type")
 	var filter *string
@@ -36,7 +36,7 @@ func (h *ServiceHandler) ListByApplication(c echo.Context) error {
 	return responses.OK(c, serviceList)
 }
 
-func (h *ServiceHandler) Show(c echo.Context) error {
+func (h *ClusterHandler) Show(c echo.Context) error {
 	appId, _ := strconv.ParseInt(c.Param("appId"), 10, 64)
 	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
@@ -48,10 +48,10 @@ func (h *ServiceHandler) Show(c echo.Context) error {
 	return responses.OK(c, service)
 }
 
-func (h *ServiceHandler) Create(c echo.Context) error {
+func (h *ClusterHandler) Create(c echo.Context) error {
 	appId, _ := strconv.ParseInt(c.Param("appId"), 10, 64)
 
-	req := new(requests.CreateServiceRequest)
+	req := new(requests.CreateClusterRequest)
 	if err := c.Bind(req); err != nil {
 		return appErrors.InvalidRequestBody
 	}
@@ -59,7 +59,7 @@ func (h *ServiceHandler) Create(c echo.Context) error {
 		return err
 	}
 
-	s := &entities.Service{
+	s := &entities.Cluster{
 		ApplicationId: appId,
 		Name:          req.Name,
 		IP:            req.IP,
@@ -68,7 +68,7 @@ func (h *ServiceHandler) Create(c echo.Context) error {
 		CPU:           req.CPU,
 		Memory:        req.Memory,
 		Path:          req.Path,
-		Type:          entities.ServiceType(req.Type),
+		Type:          entities.ClusterType(req.Type),
 		DeployMode:    entities.DeployMode(req.DeployMode),
 	}
 
@@ -76,9 +76,9 @@ func (h *ServiceHandler) Create(c echo.Context) error {
 		s.CurrentImageTag = req.Image
 	}
 
-	var cfg *entities.ServiceBuildConfig
+	var cfg *entities.ClusterBuildConfig
 	if s.DeployMode == entities.DeployModeBuild {
-		cfg = &entities.ServiceBuildConfig{
+		cfg = &entities.ClusterBuildConfig{
 			GitRepo:           req.Build.GitRepo,
 			GitBranch:         req.Build.GitBranch,
 			DockerContextPath: req.Build.DockerContextPath,
@@ -93,11 +93,11 @@ func (h *ServiceHandler) Create(c echo.Context) error {
 	return responses.Created(c, s)
 }
 
-func (h *ServiceHandler) Update(c echo.Context) error {
+func (h *ClusterHandler) Update(c echo.Context) error {
 	appId, _ := strconv.ParseInt(c.Param("appId"), 10, 64)
 	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
-	req := new(requests.UpdateServiceRequest)
+	req := new(requests.UpdateClusterRequest)
 	if err := c.Bind(req); err != nil {
 		return appErrors.InvalidRequestBody
 	}
@@ -105,7 +105,7 @@ func (h *ServiceHandler) Update(c echo.Context) error {
 		return err
 	}
 
-	s := &entities.Service{
+	s := &entities.Cluster{
 		Id:            id,
 		ApplicationId: appId,
 		Name:          req.Name,
@@ -115,17 +115,17 @@ func (h *ServiceHandler) Update(c echo.Context) error {
 		CPU:           req.CPU,
 		Memory:        req.Memory,
 		Path:          req.Path,
-		Type:          entities.ServiceType(req.Type),
+		Type:          entities.ClusterType(req.Type),
 		DeployMode:    entities.DeployMode(req.DeployMode),
 	}
 
 	if s.DeployMode == entities.DeployModeImage {
 		s.CurrentImageTag = req.Image
 	}
-	var cfg *entities.ServiceBuildConfig
+	var cfg *entities.ClusterBuildConfig
 	if s.DeployMode == entities.DeployModeBuild {
-		cfg = &entities.ServiceBuildConfig{
-			ServiceId:         s.Id,
+		cfg = &entities.ClusterBuildConfig{
+			ClusterId:         s.Id,
 			GitRepo:           req.Build.GitRepo,
 			GitBranch:         req.Build.GitBranch,
 			DockerContextPath: req.Build.DockerContextPath,
@@ -140,7 +140,7 @@ func (h *ServiceHandler) Update(c echo.Context) error {
 	return responses.OK(c, s)
 }
 
-func (h *ServiceHandler) Delete(c echo.Context) error {
+func (h *ClusterHandler) Delete(c echo.Context) error {
 	appId, _ := strconv.ParseInt(c.Param("appId"), 10, 64)
 	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
@@ -153,7 +153,7 @@ func (h *ServiceHandler) Delete(c echo.Context) error {
 	return responses.NoContent(c)
 }
 
-func (h *ServiceHandler) BuildHistory(c echo.Context) error {
+func (h *ClusterHandler) Builds(c echo.Context) error {
 	appId, _ := strconv.ParseInt(c.Param("appId"), 10, 64)
 	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
@@ -166,7 +166,7 @@ func (h *ServiceHandler) BuildHistory(c echo.Context) error {
 	return responses.OK(c, buildHistories)
 }
 
-func (h *ServiceHandler) Build(c echo.Context) error {
+func (h *ClusterHandler) Build(c echo.Context) error {
 	appId, _ := strconv.ParseInt(c.Param("appId"), 10, 64)
 	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 

@@ -3,19 +3,19 @@ package appErrors
 import "net/http"
 
 var (
-	ServiceAlreadyExist = &AppError{
+	ClusterAlreadyExist = &AppError{
 		Code:    http.StatusConflict,
-		Message: "An service with this name already exists",
+		Message: "A cluster with this name already exists",
 	}
 
-	NoServiceFound = &AppError{
+	NoClusterFound = &AppError{
 		Code:    http.StatusNotFound,
-		Message: "No service found with this Id",
+		Message: "No cluster found with this Id",
 	}
 
 	NoBuildConfigFound = &AppError{
 		Code:    http.StatusNotFound,
-		Message: "No build config found with this service id Id",
+		Message: "No build config found with this cluster id Id",
 	}
 
 	InvalidDeployMode = &AppError{

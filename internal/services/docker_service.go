@@ -47,8 +47,8 @@ func (ds *DockerService) ValidateDockerContext(appName string, contextPath strin
 	return nil
 }
 
-func (ds *DockerService) BuildImage(buildConfig *entities.ServiceBuildConfig, appName string, serviceName string) (string, error) {
-	imageTag := ds.generateImageTag(serviceName)
+func (ds *DockerService) BuildImage(buildConfig *entities.ClusterBuildConfig, appName string, clusterName string) (string, error) {
+	imageTag := ds.generateImageTag(clusterName)
 
 	dockerContextPath := ""
 	if buildConfig.DockerContextPath != "." {
@@ -75,9 +75,9 @@ func (ds *DockerService) BuildImage(buildConfig *entities.ServiceBuildConfig, ap
 
 	if err := cmd.Run(); err != nil {
 		return "", fmt.Errorf(
-			"docker build failed (app=%s service=%s tag=%s): %w",
+			"docker build failed (app=%s cluster=%s tag=%s): %w",
 			appName,
-			serviceName,
+			clusterName,
 			imageTag,
 			err,
 		)
@@ -100,22 +100,22 @@ func (ds *DockerService) PullImage(imageTag string) error {
 	return err
 }
 
-func (ds *DockerService) generateImageTag(service string) string {
+func (ds *DockerService) generateImageTag(clusterName string) string {
 	uuId, _ := uuid.NewV7()
 
 	return fmt.Sprintf(
 		"%s-%s-%s",
 		ds.dockerConfig.ImageTagPrefix,
-		service,
+		clusterName,
 		uuId.String(),
 	)
 }
 
-func (ds *DockerService) getContainerName(id, service string) string {
+func (ds *DockerService) getContainerName(id, clusterName string) string {
 	return fmt.Sprintf(
 		"%s-%s-%s",
 		ds.dockerConfig.ContainerNamePref,
-		service,
+		clusterName,
 		id,
 	)
 }

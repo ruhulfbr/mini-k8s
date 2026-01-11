@@ -18,7 +18,7 @@ func NewPodHandler(s *services.PodService) *PodHandler {
 	return &PodHandler{s}
 }
 
-func (h *PodHandler) ListByService(c echo.Context) error {
+func (h *PodHandler) ListByCluster(c echo.Context) error {
 	id, _ := strconv.ParseInt(c.Param("serviceId"), 10, 64)
 	status := c.QueryParam("status")
 	var filter *string
@@ -26,7 +26,7 @@ func (h *PodHandler) ListByService(c echo.Context) error {
 		filter = &status
 	}
 
-	pods, err := h.service.ListByService(id, filter)
+	pods, err := h.service.ListByCluster(id, filter)
 	if err != nil {
 		return err
 	}
@@ -44,7 +44,7 @@ func (h *PodHandler) Create(c echo.Context) error {
 	}
 
 	p := &entities.Pod{
-		ServiceId: req.ServiceId,
+		ClusterId: req.ServiceId,
 		Name:      req.Name,
 		Status:    entities.PodPending,
 	}

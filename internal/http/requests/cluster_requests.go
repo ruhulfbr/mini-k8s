@@ -7,7 +7,7 @@ type BuildDeployRequest struct {
 	DockerfileName    string `json:"dockerfile_name" validate:"required"`
 }
 
-type CreateServiceRequest struct {
+type CreateClusterRequest struct {
 	Name       string              `json:"name" validate:"required"`
 	IP         string              `json:"ip" validate:"required,ip"`
 	Port       int                 `json:"port"`
@@ -21,4 +21,4 @@ type CreateServiceRequest struct {
 	Build      *BuildDeployRequest `json:"build,omitempty" validate:"required_if=DeployMode 2"`                // Required when DeployMode == 2 (build)
 }
 
-type UpdateServiceRequest = CreateServiceRequest
+type UpdateClusterRequest = CreateClusterRequest

@@ -34,7 +34,7 @@ func NewLoadBalancer(podRepo *repositories.PodRepository) *LoadBalancer {
 //	}
 //
 //	for _, svc := range services {
-//		go lb.StartServiceListener(svc.Service, svc.Port)
+//		go lb.StartServiceListener(svc.Cluster, svc.Port)
 //	}
 //}
 //

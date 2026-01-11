@@ -11,8 +11,8 @@ import (
 func (w *Worker) buildImage(payload entities.Pod) (string, error) {
 	return "", nil
 
-	//imageTag := w.generateImageTag(payload.Service)
-	//buildContext := "./nodes/" + payload.Service
+	//imageTag := w.generateImageTag(payload.Cluster)
+	//buildContext := "./nodes/" + payload.Cluster
 	//
 	//cmd := exec.CommandContext(
 	//	context.Background(),

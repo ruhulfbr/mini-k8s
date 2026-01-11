@@ -8,7 +8,7 @@ import (
 
 type TerminatePayload struct {
 	ID      string `json:"id"`
-	Service string `json:"service"`
+	Cluster string `json:"service"`
 }
 
 func (w *Worker) HandleTerminate() asynq.HandlerFunc {
@@ -28,7 +28,7 @@ func (w *Worker) HandleTerminate() asynq.HandlerFunc {
 		//}
 		//defer cli.Close()
 		//
-		//containerName := w.getContainerName(payload.Id, payload.Service)
+		//containerName := w.getContainerName(payload.Id, payload.Cluster)
 		//
 		//if _, err := cli.ContainerRemove(ctx, containerName, client.ContainerRemoveOptions{
 		//	Force:         true,
@@ -38,6 +38,6 @@ func (w *Worker) HandleTerminate() asynq.HandlerFunc {
 		//	return err
 		//}
 		//
-		//return w.podRepo.DeletePod(ctx, payload.Service, payload.Id)
+		//return w.podRepo.DeletePod(ctx, payload.Cluster, payload.Id)
 	}
 }

@@ -10,7 +10,7 @@ import (
 func NewTerminateTask(pod entities.Pod) *asynq.Task {
 	payload, _ := json.Marshal(map[string]string{
 		"id": "s",
-		// "service": pod.Service,
+		// "service": pod.Cluster,
 	})
 
 	return asynq.NewTask("terminate", payload)
