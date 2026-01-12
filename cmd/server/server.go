@@ -31,10 +31,9 @@ func NewServer(echo *echo.Echo) *Server {
 }
 
 func (s *Server) Start(addr string) error {
-	if err := s.echo.Start(":" + addr); err != nil && errors.Is(err, http.ErrServerClosed) {
+	if err := s.echo.Start(":" + addr); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("start echo: %w", err)
 	}
-
 	return nil
 }
 
@@ -52,6 +51,11 @@ func InitServer(
 	lb *loadBalancer.LoadBalancer,
 ) (*Server, error) {
 	engine := echo.New()
+
+	engine.Server.ReadTimeout = 15 * time.Second
+	engine.Server.WriteTimeout = 30 * time.Second
+	engine.Server.IdleTimeout = 60 * time.Second
+
 	engine.Validator = validator.New()
 
 	routes.ConfigureRoutes(engine, ds, asynqClient, lb)

@@ -37,13 +37,7 @@ func (s *ApplicationService) Create(app *entities.Application) error {
 		return appErrors.ApplicationAlreadyExist
 	}
 
-	err := s.repo.Create(app)
-	if err != nil {
-		_ = s.GitService.RemoveApplicationDir(app.Name)
-		return err
-	}
-
-	return nil
+	return s.repo.Create(app)
 }
 
 func (s *ApplicationService) Update(app *entities.Application) error {

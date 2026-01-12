@@ -25,6 +25,7 @@ CMD ["sh", "-c", "\
       -log-prefix=false \
       -color=true \
       -exclude-dir=./.git \
+      -exclude-dir=./clusters \
       -exclude-dir=./data/sqlite \
       -build=\"go build -buildvcs=false -o main ./cmd\" \
       -command=\"./main\" \

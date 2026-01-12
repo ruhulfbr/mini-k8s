@@ -39,7 +39,6 @@ CREATE TABLE IF NOT EXISTS clusters
     FOREIGN KEY (application_id) REFERENCES applications (id)
 );
 
--- Index for faster lookup by application
 CREATE INDEX IF NOT EXISTS idx_clusters_application_id
     ON clusters (application_id);
 CREATE INDEX IF NOT EXISTS idx_clusters_type
@@ -70,8 +69,8 @@ CREATE INDEX IF NOT EXISTS idx_cluster_build_configs_cluster_id
 
 
 -- =====================================================
--- BUILD HISTORY TABLE
--- Tracks build history per cluster & application
+-- cluster_builds TABLE
+-- Tracks cluster_builds per cluster & application
 -- =====================================================
 CREATE TABLE IF NOT EXISTS cluster_builds
 (
@@ -85,13 +84,12 @@ CREATE TABLE IF NOT EXISTS cluster_builds
     FOREIGN KEY (cluster_id) REFERENCES clusters (id)
 );
 
--- Index for faster application-based queries
 CREATE INDEX IF NOT EXISTS idx_cluster_builds_cluster_id
     ON cluster_builds (cluster_id);
 
 
 -- =====================================================
--- PODS TABLE
+-- pods TABLE
 -- Stores runtime pod instances per cluster
 -- =====================================================
 CREATE TABLE IF NOT EXISTS pods

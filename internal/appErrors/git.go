@@ -8,6 +8,11 @@ var (
 		Message: "Invalid or unreachable git repository",
 	}
 
+	GitRepoAlreadyCloned = &AppError{
+		Code:    http.StatusBadRequest,
+		Message: "Git repository already cloned",
+	}
+
 	GitBranchNotExist = &AppError{
 		Code:    http.StatusUnprocessableEntity,
 		Message: "branch does not exist in repository",

@@ -42,7 +42,7 @@ type SQLiteConfig struct {
 }
 
 type DockerConfig struct {
-	ApplicationPath   string `env:"DOCKER_APPLICATIONS_PATH" envDefault:"applications"`
+	ClusterPath       string `env:"DOCKER_CLUSTERS_PATH" envDefault:"clusters"`
 	ContainerNamePref string `env:"DOCKER_CONTAINER_PREFIX"`
 	ImageTagPrefix    string `env:"DOCKER_IMAGE_TAG_PREFIX"`
 }

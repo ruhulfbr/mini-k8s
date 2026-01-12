@@ -1,8 +1,8 @@
 package services
 
 import (
+	"context"
 	"errors"
-	"fmt"
 	"os"
 
 	"github.com/go-git/go-git/v5"
@@ -11,6 +11,7 @@ import (
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/ruhulfbr/mini-k8s/internal/appErrors"
 	"github.com/ruhulfbr/mini-k8s/internal/config"
+	"github.com/ruhulfbr/mini-k8s/internal/entities"
 	"github.com/ruhulfbr/mini-k8s/internal/infrastructure/logger"
 	"github.com/ruhulfbr/mini-k8s/internal/utils/fsUtils"
 )
@@ -46,24 +47,32 @@ func (gs *GitService) ValidateRepoAndBranch(repoURL, branch string) error {
 	return appErrors.GitBranchNotExist
 }
 
-// CloneApplication clones repo into applications/<appName>
-func (gs *GitService) CloneApplication(repoURL string, branch string, appName string) error {
-	targetDir := fsUtils.Join(gs.dockerConfig.ApplicationPath, appName)
+// CloneApplication clones repo into clusters/<appName>
+func (gs *GitService) CloneApplication(appName string, clusterName string, repoURL string, branch string) error {
+	repoPath := gs.repoPath(appName, clusterName)
+	ctx := context.Background()
 
-	// Ensure applications directory exists
-	if err := fsUtils.EnsureDir(gs.dockerConfig.ApplicationPath); err != nil {
-		logger.Error(nil, "Failed to create application directory for "+appName, err)
+	// Ensure clusters directory exists
+	if err := fsUtils.EnsureDir(gs.dockerConfig.ClusterPath); err != nil {
+		logger.Error(ctx, "Failed to create clusters base directory", err,
+			"application", appName,
+			"cluster", clusterName,
+			"repository", repoPath,
+		)
 		return err
 	}
 
 	// Prevent overwriting existing app
-	if fsUtils.DirExists(targetDir) {
-		logger.Error(nil, "application directory already exist for: "+appName, nil)
-
-		return fmt.Errorf("application '%s' already exists in system", appName)
+	if fsUtils.DirExists(repoPath) {
+		logger.Error(ctx, "Cluster repository already cloned", nil,
+			"application", appName,
+			"cluster", clusterName,
+			"repository", repoPath,
+		)
+		return appErrors.GitRepoAlreadyCloned
 	}
 
-	_, err := git.PlainClone(targetDir, false, &git.CloneOptions{
+	_, err := git.PlainClone(repoPath, false, &git.CloneOptions{
 		URL:           repoURL,
 		ReferenceName: plumbing.NewBranchReferenceName(branch),
 		SingleBranch:  true,
@@ -72,41 +81,55 @@ func (gs *GitService) CloneApplication(repoURL string, branch string, appName st
 	})
 
 	if err != nil {
-		logger.Error(nil, "Failed to clone repository", err)
-
+		logger.Error(ctx, "Failed to clone repository", err,
+			"application", appName,
+			"cluster", clusterName,
+			"repository", repoPath,
+		)
 		return appErrors.GitFailedToClone
 	}
 
 	return nil
 }
 
-func (gs *GitService) PullApplication(appName, branch string) error {
-	repoPath := fsUtils.Join(gs.dockerConfig.ApplicationPath, appName)
+func (gs *GitService) PullApplication(appName string, clusterName string, buildConfig *entities.ClusterBuildConfig) error {
+	repoPath := gs.repoPath(appName, clusterName)
 
-	if _, err := os.Stat(repoPath); err != nil {
-
-		logger.Error(nil, "Repository not found to pull", err)
-		return appErrors.GitRepoNotFound
+	if !fsUtils.DirExists(repoPath) {
+		return gs.CloneApplication(appName, clusterName, buildConfig.GitRepo, buildConfig.GitBranch)
 	}
+
+	ctx := context.Background()
 
 	repo, err := git.PlainOpen(repoPath)
 	if err != nil {
-		logger.Error(nil, "Failed to open repo", err)
-
+		logger.Error(ctx, "Failed to open repo", err,
+			"application", appName,
+			"cluster", clusterName,
+			"repository", repoPath,
+		)
 		return appErrors.GitRepoFailedToOpen
 	}
 
 	wt, err := repo.Worktree()
 	if err != nil {
-		logger.Error(nil, "Failed to open git worktree", err)
+		logger.Error(nil, "Failed to open git worktree", err,
+			"application", appName,
+			"cluster", clusterName,
+			"repository", repoPath,
+		)
 		return appErrors.GitFailedToOpenWorkTree
 	}
 
-	ref := plumbing.NewBranchReferenceName(branch)
+	ref := plumbing.NewBranchReferenceName(buildConfig.GitBranch)
 	if err := wt.Checkout(&git.CheckoutOptions{
 		Branch: ref,
 	}); err != nil {
-		logger.Error(nil, "Failed to checkout", err)
+		logger.Error(nil, "Failed to checkout", err,
+			"application", appName,
+			"cluster", clusterName,
+			"repository", repoPath,
+		)
 		return appErrors.GitFailedToCheckout
 	}
 
@@ -121,13 +144,21 @@ func (gs *GitService) PullApplication(appName, branch string) error {
 			return nil
 		}
 
-		logger.Error(nil, "git pull failed", err)
+		logger.Error(nil, "git pull failed", err,
+			"application", appName,
+			"cluster", clusterName,
+			"repository", repoPath,
+		)
 		return appErrors.GitFailedToPull
 	}
 
 	return nil
 }
 
+func (gs *GitService) repoPath(appName string, clusterName string) string {
+	return fsUtils.Join(gs.dockerConfig.ClusterPath, appName+"-"+clusterName)
+}
+
 func (gs *GitService) RemoveApplicationDir(appName string) error {
-	return fsUtils.RemoveDir(fsUtils.Join(gs.dockerConfig.ApplicationPath, appName))
+	return fsUtils.RemoveDir(fsUtils.Join(gs.dockerConfig.ClusterPath, appName))
 }

@@ -5,18 +5,38 @@ import (
 )
 
 var (
-	DockerContextFileNotFound = &AppError{
-		Code:    http.StatusNotFound,
-		Message: "Docker context file not found",
+	DockerInvalidContextPath = &AppError{
+		Code:    http.StatusBadRequest,
+		Message: "Invalid docker context path",
+	}
+
+	DockerFileNotFound = &AppError{
+		Code:    http.StatusBadRequest,
+		Message: "Dockerfile file not found",
 	}
 
 	DockerDuplicateImageTag = &AppError{
-		Code:    http.StatusNotFound,
+		Code:    http.StatusBadRequest,
 		Message: "Docker image tag already exists",
 	}
 
 	DockerDuplicateVersion = &AppError{
-		Code:    http.StatusNotFound,
+		Code:    http.StatusBadRequest,
 		Message: "Docker build version already exists",
+	}
+
+	DockerFailedToBuildImage = &AppError{
+		Code:    http.StatusBadRequest,
+		Message: "Failed to build Docker image",
+	}
+
+	DockerFailedToPullImage = &AppError{
+		Code:    http.StatusBadRequest,
+		Message: "Failed to pull Docker image",
+	}
+
+	DockerContainerHasNoIP = &AppError{
+		Code:    http.StatusBadRequest,
+		Message: "Docker container has no IP",
 	}
 )

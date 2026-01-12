@@ -94,7 +94,6 @@ func (s *ClusterService) Create(cluster *entities.Cluster, bCfg *entities.Cluste
 		if err := s.buildConfigRepo.Create(bCfg); err != nil {
 			return err
 		}
-		// Enqueue New Job to clone application and validate docker context + docker file
 	}
 
 	return nil
@@ -130,8 +129,6 @@ func (s *ClusterService) Update(cluster *entities.Cluster, bCfg *entities.Cluste
 			logger.Error(nil, "Update build config error", err)
 			return err
 		}
-
-		// Enqueue New Job to clone application and validate docker context + docker file
 	}
 
 	if existing.DeployMode == entities.DeployModeBuild && cluster.DeployMode == entities.DeployModeImage {
@@ -196,7 +193,7 @@ func (s *ClusterService) BuildDockerImage(appId int64, clusterId int64, version 
 		return nil, appErrors.NoBuildConfigFound
 	}
 
-	if err := s.gitService.PullApplication(application.Name, buildConfig.GitBranch); err != nil {
+	if err := s.gitService.PullApplication(application.Name, cluster.Name, buildConfig); err != nil {
 		return nil, err
 	}
 

@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"path/filepath"
 
@@ -34,53 +35,48 @@ func NewDockerService() *DockerService {
 	}
 }
 
-func (ds *DockerService) ValidateDockerContext(appName string, contextPath string) error {
-	appPath := fsUtils.Join(ds.dockerConfig.ApplicationPath, appName)
-	if !fsUtils.DirExists(appPath) {
-		return appErrors.GirApplicationNotClonedYet
-	}
-
-	if !fsUtils.FileExists(fsUtils.Join(appPath, contextPath)) {
-		return appErrors.DockerContextFileNotFound
-	}
-
-	return nil
-}
-
 func (ds *DockerService) BuildImage(buildConfig *entities.ClusterBuildConfig, appName string, clusterName string) (string, error) {
-	imageTag := ds.generateImageTag(clusterName)
-
 	dockerContextPath := ""
 	if buildConfig.DockerContextPath != "." {
 		dockerContextPath = buildConfig.DockerContextPath
 	}
 
-	buildContext := filepath.Join(ds.dockerConfig.ApplicationPath, appName, dockerContextPath)
+	buildContext := filepath.Join(
+		ds.dockerConfig.ClusterPath,
+		ds.clusterDir(appName, clusterName),
+		dockerContextPath,
+	)
 	dockerfilePath := filepath.Join(buildContext, buildConfig.DockerfileName)
 
+	if !fsUtils.FileExists(dockerfilePath) {
+		return "", appErrors.DockerFileNotFound
+	}
+
+	ctx := context.Background()
+	imageTag := ds.generateImageTag(appName, clusterName)
+
 	cmd := exec.CommandContext(
-		context.Background(),
+		ctx,
 		"docker", "build",
 		"-f", dockerfilePath,
 		"-t", imageTag,
 		buildContext,
 	)
 
-	//cmd.Stdout = os.Stdout
-	//cmd.Stderr = os.Stderr
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = io.MultiWriter(os.Stdout, &stdout)
+	cmd.Stderr = io.MultiWriter(os.Stderr, &stderr)
 
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf(
-			"docker build failed (app=%s cluster=%s tag=%s): %w",
-			appName,
-			clusterName,
-			imageTag,
-			err,
+	err := cmd.Run()
+	if err != nil {
+		logger.Error(ctx, "Docker build failed", err,
+			"application", appName,
+			"Cluster", clusterName,
+			"Image Tag", imageTag,
+			"Error Details", stderr.String(),
 		)
+
+		return "", appErrors.DockerFailedToBuildImage
 	}
 
 	return imageTag, nil
@@ -91,8 +87,8 @@ func (ds *DockerService) PullImage(imageTag string) error {
 
 	reader, err := ds.cli.ImagePull(ctx, imageTag, client.ImagePullOptions{})
 	if err != nil {
-		logger.Error(ctx, "Failed to pull docker image", err)
-		return err
+		logger.Error(ctx, "Failed to pull docker image", err, "imageTag", imageTag)
+		return appErrors.DockerFailedToPullImage
 	}
 	defer reader.Close()
 
@@ -100,28 +96,28 @@ func (ds *DockerService) PullImage(imageTag string) error {
 	return err
 }
 
-func (ds *DockerService) generateImageTag(clusterName string) string {
+func (ds *DockerService) generateImageTag(appName string, clusterName string) string {
 	uuId, _ := uuid.NewV7()
 
 	return fmt.Sprintf(
 		"%s-%s-%s",
-		ds.dockerConfig.ImageTagPrefix,
+		appName,
 		clusterName,
 		uuId.String(),
 	)
 }
 
-func (ds *DockerService) getContainerName(id, clusterName string) string {
+func (ds *DockerService) getContainerName(id, appName string, clusterName string) string {
 	return fmt.Sprintf(
 		"%s-%s-%s",
-		ds.dockerConfig.ContainerNamePref,
+		appName,
 		clusterName,
 		id,
 	)
 }
 
-func (ds *DockerService) getContainerIP(ctx context.Context, cli *client.Client, containerID string) (string, error) {
-	inspect, err := cli.ContainerInspect(ctx, containerID, client.ContainerInspectOptions{})
+func (ds *DockerService) getContainerIP(ctx context.Context, cli *client.Client, containerId string) (string, error) {
+	inspect, err := cli.ContainerInspect(ctx, containerId, client.ContainerInspectOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -133,8 +129,13 @@ func (ds *DockerService) getContainerIP(ctx context.Context, cli *client.Client,
 	}
 
 	if ip == "" {
-		return "", fmt.Errorf("container has no IP address")
+		logger.Error(ctx, "Failed to get container IP", err, "containerId", containerId)
+		return "", appErrors.DockerContainerHasNoIP
 	}
 
 	return ip, nil
+}
+
+func (ds *DockerService) clusterDir(appName string, clusterName string) string {
+	return appName + "-" + clusterName
 }
