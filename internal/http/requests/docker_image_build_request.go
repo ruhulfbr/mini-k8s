@@ -1,5 +1,5 @@
 package requests
 
-type BuildRequest struct {
+type DockerImageBuildRequest struct {
 	Version string `json:"version" validate:"required"`
 }

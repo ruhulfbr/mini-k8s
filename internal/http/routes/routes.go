@@ -29,24 +29,23 @@ func ConfigureRoutes(
 
 	api := engine.Group("/api")
 
-	app := api.Group("/applications")
-	app.GET("", appHandlers.ApplicationHandler.List)
-	app.POST("", appHandlers.ApplicationHandler.Create)
-	app.GET("/:id", appHandlers.ApplicationHandler.Show)
-	app.PUT("/:id", appHandlers.ApplicationHandler.Update)
-	app.DELETE("/:id", appHandlers.ApplicationHandler.Delete)
+	application := api.Group("/applications")
+	application.GET("", appHandlers.ApplicationHandler.List)
+	application.POST("", appHandlers.ApplicationHandler.Create)
+	application.GET("/:id", appHandlers.ApplicationHandler.Show)
+	application.PUT("/:id", appHandlers.ApplicationHandler.Update)
+	application.DELETE("/:id", appHandlers.ApplicationHandler.Delete)
 
-	svc := api.Group("/applications/:appId/clusters")
-	svc.GET("", appHandlers.ClusterHandler.ListByApplication)
-	svc.POST("", appHandlers.ClusterHandler.Create)
-	svc.GET("/:id", appHandlers.ClusterHandler.Show)
-	svc.PUT("/:id", appHandlers.ClusterHandler.Update)
-	svc.DELETE("/:id", appHandlers.ClusterHandler.Delete)
-
-	build := api.Group("/applications/:appId/clusters/:id/build")
-
-	build.GET("", appHandlers.ClusterHandler.Builds)
-	build.POST("", appHandlers.ClusterHandler.Build)
+	cluster := api.Group("/applications/:appId/clusters")
+	cluster.GET("", appHandlers.ClusterHandler.ListByApplication)
+	cluster.POST("", appHandlers.ClusterHandler.Create)
+	cluster.GET("/:id", appHandlers.ClusterHandler.Show)
+	cluster.PUT("/:id", appHandlers.ClusterHandler.Update)
+	cluster.DELETE("/:id", appHandlers.ClusterHandler.Delete)
+	
+	cluster.GET("/:id/builds", appHandlers.ClusterHandler.BuildHistory)
+	cluster.POST("/:id/build-image", appHandlers.ClusterHandler.BuildImage)
+	cluster.POST("/:id/pull-image", appHandlers.ClusterHandler.PullImage)
 
 	pods := api.Group("/clusters/:id/pods")
 	pods.GET("", appHandlers.PodHandler.ListByCluster)

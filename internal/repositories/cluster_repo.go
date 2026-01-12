@@ -93,7 +93,7 @@ func (r *ClusterRepository) Create(s *entities.Cluster) error {
 		INSERT INTO clusters (
 			application_id, name, ip, port,
 			replicas, cpu, memory, path, type, deploy_mode, current_image_tag
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ? ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		RETURNING id, status, created_at, updated_at`,
 		s.ApplicationId,
 		s.Name,

@@ -215,7 +215,7 @@ func (s *ClusterService) BuildDockerImage(appId int64, clusterId int64, version 
 	return clusterBuild, nil
 }
 
-func (s *ClusterService) PullDockerImage(appId int64, clusterId int64, version string, image string) (*entities.ClusterBuild, error) {
+func (s *ClusterService) PullDockerImage(appId int64, clusterId int64, version string) (*entities.ClusterBuild, error) {
 	if err := validateVersionText(version); err != nil {
 		return nil, err
 	}
@@ -234,15 +234,11 @@ func (s *ClusterService) PullDockerImage(appId int64, clusterId int64, version s
 		return nil, appErrors.InvalidDeployMode
 	}
 
-	if s.buildRepo.ExistsByImage(clusterId, image) {
-		return nil, appErrors.DockerDuplicateImageTag
-	}
-
 	if s.buildRepo.ExistsByVersion(clusterId, version) {
 		return nil, appErrors.DockerDuplicateVersion
 	}
 
-	err = s.dockerService.PullImage(image)
+	newImageTag, err := s.dockerService.PullImageWithTag(application.Name, cluster)
 	if err != nil {
 		return nil, err
 	}
@@ -250,7 +246,7 @@ func (s *ClusterService) PullDockerImage(appId int64, clusterId int64, version s
 	clusterBuild := &entities.ClusterBuild{
 		ClusterId: cluster.Id,
 		Version:   version,
-		ImageTag:  image,
+		ImageTag:  newImageTag,
 	}
 
 	if err := s.buildRepo.Create(clusterBuild); err != nil {

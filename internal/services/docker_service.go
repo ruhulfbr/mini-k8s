@@ -9,12 +9,12 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/google/uuid"
 	"github.com/moby/moby/client"
 	"github.com/ruhulfbr/mini-k8s/internal/appErrors"
 	"github.com/ruhulfbr/mini-k8s/internal/config"
 	"github.com/ruhulfbr/mini-k8s/internal/entities"
 	"github.com/ruhulfbr/mini-k8s/internal/infrastructure/logger"
+	"github.com/ruhulfbr/mini-k8s/internal/utils"
 	"github.com/ruhulfbr/mini-k8s/internal/utils/fsUtils"
 )
 
@@ -82,28 +82,58 @@ func (ds *DockerService) BuildImage(buildConfig *entities.ClusterBuildConfig, ap
 	return imageTag, nil
 }
 
-func (ds *DockerService) PullImage(imageTag string) error {
+func (ds *DockerService) PullImageWithTag(appName string, cluster *entities.Cluster) (string, error) {
 	ctx := context.Background()
+
+	imageTag := *cluster.CurrentImageTag
 
 	reader, err := ds.cli.ImagePull(ctx, imageTag, client.ImagePullOptions{})
 	if err != nil {
-		logger.Error(ctx, "Failed to pull docker image", err, "imageTag", imageTag)
-		return appErrors.DockerFailedToPullImage
+		logger.Error(ctx, "Failed to pull docker image", err,
+			"imageTag", imageTag,
+			"New Image Tag", imageTag,
+			"Application", appName,
+			"Cluster", cluster.Name,
+		)
+		return "", appErrors.DockerFailedToPullImage
 	}
 	defer reader.Close()
 
 	_, err = io.Copy(io.Discard, reader)
-	return err
+	if err != nil {
+		logger.Error(ctx, "Error reading pull response", err,
+			"imageTag", imageTag,
+			"Application", appName,
+			"Cluster", cluster.Name,
+		)
+		return "", appErrors.DockerFailedReadPullResponse
+	}
+
+	// Tag the image locally
+	newImageTag := imageTag + "-" + utils.UniqueId()
+	_, err = ds.cli.ImageTag(ctx, client.ImageTagOptions{
+		Source: imageTag,
+		Target: newImageTag,
+	})
+	if err != nil {
+		logger.Error(ctx, "Failed to tag docker image", err,
+			"imageTag", imageTag,
+			"New Image Tag", newImageTag,
+			"Application", appName,
+			"Cluster", cluster.Name,
+		)
+		return "", appErrors.DockerFailedAddNewTagToImage
+	}
+
+	return newImageTag, nil
 }
 
 func (ds *DockerService) generateImageTag(appName string, clusterName string) string {
-	uuId, _ := uuid.NewV7()
-
 	return fmt.Sprintf(
 		"%s-%s-%s",
 		appName,
 		clusterName,
-		uuId.String(),
+		utils.UniqueId(),
 	)
 }
 

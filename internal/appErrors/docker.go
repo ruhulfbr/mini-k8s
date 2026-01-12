@@ -39,4 +39,14 @@ var (
 		Code:    http.StatusBadRequest,
 		Message: "Docker container has no IP",
 	}
+
+	DockerFailedReadPullResponse = &AppError{
+		Code:    http.StatusBadRequest,
+		Message: "Failed to read Docker pull response",
+	}
+
+	DockerFailedAddNewTagToImage = &AppError{
+		Code:    http.StatusBadRequest,
+		Message: "Failed to add new tag to Docker image",
+	}
 )

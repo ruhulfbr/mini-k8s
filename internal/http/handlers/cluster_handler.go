@@ -153,7 +153,7 @@ func (h *ClusterHandler) Delete(c echo.Context) error {
 	return responses.NoContent(c)
 }
 
-func (h *ClusterHandler) Builds(c echo.Context) error {
+func (h *ClusterHandler) BuildHistory(c echo.Context) error {
 	appId, _ := strconv.ParseInt(c.Param("appId"), 10, 64)
 	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
@@ -166,11 +166,11 @@ func (h *ClusterHandler) Builds(c echo.Context) error {
 	return responses.OK(c, buildHistories)
 }
 
-func (h *ClusterHandler) Build(c echo.Context) error {
+func (h *ClusterHandler) BuildImage(c echo.Context) error {
 	appId, _ := strconv.ParseInt(c.Param("appId"), 10, 64)
 	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
-	req := new(requests.BuildRequest)
+	req := new(requests.DockerImageBuildRequest)
 	if err := c.Bind(req); err != nil {
 		return appErrors.InvalidRequestBody
 	}
@@ -179,6 +179,26 @@ func (h *ClusterHandler) Build(c echo.Context) error {
 	}
 
 	service, err := h.service.BuildDockerImage(appId, id, req.Version)
+	if err != nil {
+		return err
+	}
+
+	return responses.OK(c, service)
+}
+
+func (h *ClusterHandler) PullImage(c echo.Context) error {
+	appId, _ := strconv.ParseInt(c.Param("appId"), 10, 64)
+	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+
+	req := new(requests.DockerImagePullRequest)
+	if err := c.Bind(req); err != nil {
+		return appErrors.InvalidRequestBody
+	}
+	if err := c.Validate(req); err != nil {
+		return err
+	}
+
+	service, err := h.service.PullDockerImage(appId, id, req.Version)
 	if err != nil {
 		return err
 	}
