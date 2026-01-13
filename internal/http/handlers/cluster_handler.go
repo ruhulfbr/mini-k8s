@@ -70,6 +70,7 @@ func (h *ClusterHandler) Create(c echo.Context) error {
 		Path:          req.Path,
 		Type:          entities.ClusterType(req.Type),
 		DeployMode:    entities.DeployMode(req.DeployMode),
+		Envs:          req.Envs,
 	}
 
 	if s.DeployMode == entities.DeployModeImage {
@@ -117,6 +118,7 @@ func (h *ClusterHandler) Update(c echo.Context) error {
 		Path:          req.Path,
 		Type:          entities.ClusterType(req.Type),
 		DeployMode:    entities.DeployMode(req.DeployMode),
+		Envs:          req.Envs,
 	}
 
 	if s.DeployMode == entities.DeployModeImage {

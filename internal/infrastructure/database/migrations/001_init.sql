@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS clusters
     type              TEXT    NOT NULL DEFAULT 'http', -- Cluster type (http, worker, etc.)
     deploy_mode       INTEGER NOT NULL DEFAULT 1,      -- Deployment mode (1=image, 2=build)
     image             TEXT             DEFAULT NULL,   -- Docker image for build mode image
+    envs              TEXT             DEFAULT NULL,   -- Cluster env variables
     current_image_tag TEXT             DEFAULT NULL,   -- Current Docker image tag
     current_version   TEXT             DEFAULT NULL,   -- Current Deployed version
     status            INTEGER NOT NULL DEFAULT 1,      -- Status (1=active, 0=inactive)
