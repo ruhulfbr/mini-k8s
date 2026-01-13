@@ -73,7 +73,7 @@ func (h *ClusterHandler) Create(c echo.Context) error {
 	}
 
 	if s.DeployMode == entities.DeployModeImage {
-		s.CurrentImageTag = req.Image
+		s.Image = req.Image
 	}
 
 	var cfg *entities.ClusterBuildConfig
@@ -120,7 +120,7 @@ func (h *ClusterHandler) Update(c echo.Context) error {
 	}
 
 	if s.DeployMode == entities.DeployModeImage {
-		s.CurrentImageTag = req.Image
+		s.Image = req.Image
 	}
 	var cfg *entities.ClusterBuildConfig
 	if s.DeployMode == entities.DeployModeBuild {

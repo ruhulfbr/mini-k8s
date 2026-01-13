@@ -92,7 +92,7 @@ func (r *ClusterRepository) Create(s *entities.Cluster) error {
 	return r.db.QueryRow(`
 		INSERT INTO clusters (
 			application_id, name, ip, port,
-			replicas, cpu, memory, path, type, deploy_mode, current_image_tag
+			replicas, cpu, memory, path, type, deploy_mode, image
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		RETURNING id, status, created_at, updated_at`,
 		s.ApplicationId,
@@ -105,7 +105,7 @@ func (r *ClusterRepository) Create(s *entities.Cluster) error {
 		s.Path,
 		s.Type,
 		s.DeployMode,
-		s.CurrentImageTag,
+		s.Image,
 	).Scan(&s.Id, &s.Status, &s.CreatedAt, &s.UpdatedAt)
 }
 
@@ -121,7 +121,7 @@ func (r *ClusterRepository) Update(s *entities.Cluster) error {
 			path = :path,
 			type = :type,
 			deploy_mode = :deploy_mode,
-			current_image_tag= :current_image_tag
+			image= :image
 		WHERE id = :id
 	`, s)
 

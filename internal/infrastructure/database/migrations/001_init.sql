@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS clusters
     path              TEXT    NOT NULL DEFAULT '/',    -- Cluster path
     type              TEXT    NOT NULL DEFAULT 'http', -- Cluster type (http, worker, etc.)
     deploy_mode       INTEGER NOT NULL DEFAULT 1,      -- Deployment mode (1=image, 2=build)
+    image             TEXT             DEFAULT NULL,   -- Docker image for build mode image
     current_image_tag TEXT             DEFAULT NULL,   -- Current Docker image tag
     current_version   TEXT             DEFAULT NULL,   -- Current Deployed version
     status            INTEGER NOT NULL DEFAULT 1,      -- Status (1=active, 0=inactive)
@@ -74,12 +75,12 @@ CREATE INDEX IF NOT EXISTS idx_cluster_build_configs_cluster_id
 -- =====================================================
 CREATE TABLE IF NOT EXISTS cluster_builds
 (
-    id             INTEGER PRIMARY KEY AUTOINCREMENT,
-    cluster_id     INTEGER NOT NULL,      -- FK to clusters
-    version        TEXT    NOT NULL,      -- Build/Version
-    image_tag      TEXT    NOT NULL,      -- Build/image tag
-    deployed_at    DATETIME DEFAULT NULL, -- Deployed at timestamp
-    created_at     DATETIME DEFAULT CURRENT_TIMESTAMP,
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    cluster_id  INTEGER NOT NULL,      -- FK to clusters
+    version     TEXT    NOT NULL,      -- Build/Version
+    image_tag   TEXT    NOT NULL,      -- Build/image tag
+    deployed_at DATETIME DEFAULT NULL, -- Deployed at timestamp
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
 
     FOREIGN KEY (cluster_id) REFERENCES clusters (id)
 );
