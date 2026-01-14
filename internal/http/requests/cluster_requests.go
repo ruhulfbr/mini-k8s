@@ -1,6 +1,6 @@
 package requests
 
-type BuildDeployRequest struct {
+type BuildConfigRequest struct {
 	GitRepo           string `json:"git_repo" validate:"required,url"`
 	GitBranch         string `json:"git_branch" validate:"required"`
 	DockerContextPath string `json:"docker_context_path" validate:"required"`
@@ -18,9 +18,8 @@ type CreateClusterRequest struct {
 	Type       string              `json:"type" validate:"required,oneof=http worker"`
 	DeployMode int                 `json:"deploy_mode" validate:"required,oneof=1 2"`                          // 1 = image, 2 = build
 	Image      *string             `json:"image" validate:"required_if=DeployMode 1,excluded_if=DeployMode 2"` // Required when DeployMode == 1 (image)
-	Build      *BuildDeployRequest `json:"build,omitempty" validate:"required_if=DeployMode 2"`                // Required when DeployMode == 2 (build)
-
-	Envs map[string]string `json:"env,omitempty"`
+	Build      *BuildConfigRequest `json:"build,omitempty" validate:"required_if=DeployMode 2"`                // Required when DeployMode == 2 (build)
+	Envs       map[string]string   `json:"envs,omitempty"`
 }
 
 type UpdateClusterRequest = CreateClusterRequest

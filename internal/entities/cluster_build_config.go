@@ -1,6 +1,10 @@
 package entities
 
-import "time"
+import (
+	"time"
+
+	"github.com/ruhulfbr/mini-k8s/internal/http/requests"
+)
 
 type ClusterBuildConfig struct {
 	Id                int64     `db:"id" json:"id"`
@@ -11,4 +15,19 @@ type ClusterBuildConfig struct {
 	DockerfileName    string    `db:"dockerfile_name" json:"dockerfile_name"`
 	CreatedAt         time.Time `db:"created_at"  json:"created_at"`
 	UpdatedAt         time.Time `db:"updated_at"  json:"updated_at"`
+}
+
+func NewClusterBuildConfig(req *requests.BuildConfigRequest, clusterId ...int64) *ClusterBuildConfig {
+	cfg := &ClusterBuildConfig{
+		GitRepo:           req.GitRepo,
+		GitBranch:         req.GitBranch,
+		DockerContextPath: req.DockerContextPath,
+		DockerfileName:    req.DockerfileName,
+	}
+
+	if len(clusterId) > 0 {
+		cfg.ClusterId = clusterId[0]
+	}
+
+	return cfg
 }

@@ -59,39 +59,21 @@ func (h *ClusterHandler) Create(c echo.Context) error {
 		return err
 	}
 
-	s := &entities.Cluster{
-		ApplicationId: appId,
-		Name:          req.Name,
-		IP:            req.IP,
-		Port:          req.Port,
-		Replicas:      req.Replicas,
-		CPU:           req.CPU,
-		Memory:        req.Memory,
-		Path:          req.Path,
-		Type:          entities.ClusterType(req.Type),
-		DeployMode:    entities.DeployMode(req.DeployMode),
-		Envs:          req.Envs,
-	}
-
-	if s.DeployMode == entities.DeployModeImage {
-		s.Image = req.Image
-	}
-
-	var cfg *entities.ClusterBuildConfig
-	if s.DeployMode == entities.DeployModeBuild {
-		cfg = &entities.ClusterBuildConfig{
-			GitRepo:           req.Build.GitRepo,
-			GitBranch:         req.Build.GitBranch,
-			DockerContextPath: req.Build.DockerContextPath,
-			DockerfileName:    req.Build.DockerfileName,
-		}
-	}
-
-	if err := h.service.Create(s, cfg); err != nil {
+	cl, err := entities.NewCluster(appId, req)
+	if err != nil {
 		return err
 	}
 
-	return responses.Created(c, s)
+	var cfg *entities.ClusterBuildConfig
+	if cl.DeployMode == entities.DeployModeBuild {
+		cfg = entities.NewClusterBuildConfig(req.Build)
+	}
+
+	if err := h.service.Create(cl, cfg); err != nil {
+		return err
+	}
+
+	return responses.Created(c, cl)
 }
 
 func (h *ClusterHandler) Update(c echo.Context) error {
@@ -106,40 +88,20 @@ func (h *ClusterHandler) Update(c echo.Context) error {
 		return err
 	}
 
-	s := &entities.Cluster{
-		Id:            id,
-		ApplicationId: appId,
-		Name:          req.Name,
-		IP:            req.IP,
-		Port:          req.Port,
-		Replicas:      req.Replicas,
-		CPU:           req.CPU,
-		Memory:        req.Memory,
-		Path:          req.Path,
-		Type:          entities.ClusterType(req.Type),
-		DeployMode:    entities.DeployMode(req.DeployMode),
-		Envs:          req.Envs,
-	}
-
-	if s.DeployMode == entities.DeployModeImage {
-		s.Image = req.Image
+	cl, err := entities.NewCluster(appId, req)
+	if err != nil {
+		return err
 	}
 	var cfg *entities.ClusterBuildConfig
-	if s.DeployMode == entities.DeployModeBuild {
-		cfg = &entities.ClusterBuildConfig{
-			ClusterId:         s.Id,
-			GitRepo:           req.Build.GitRepo,
-			GitBranch:         req.Build.GitBranch,
-			DockerContextPath: req.Build.DockerContextPath,
-			DockerfileName:    req.Build.DockerfileName,
-		}
+	if cl.DeployMode == entities.DeployModeBuild {
+		cfg = entities.NewClusterBuildConfig(req.Build, id)
 	}
 
-	if err := h.service.Update(s, cfg); err != nil {
+	if err := h.service.Update(cl, cfg); err != nil {
 		return err
 	}
 
-	return responses.OK(c, s)
+	return responses.OK(c, cl)
 }
 
 func (h *ClusterHandler) Delete(c echo.Context) error {
