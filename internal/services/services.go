@@ -22,7 +22,7 @@ func InitServices(
 ) (*Services, error) {
 	gitService := NewGitService()
 	dockerService := NewDockerService()
-	
+
 	sv := &Services{
 		ApplicationService: NewApplicationService(repos.ApplicationRepository, gitService),
 		ClusterService: NewClusterService(

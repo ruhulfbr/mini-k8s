@@ -42,7 +42,7 @@ func ConfigureRoutes(
 	cluster.GET("/:id", appHandlers.ClusterHandler.Show)
 	cluster.PUT("/:id", appHandlers.ClusterHandler.Update)
 	cluster.DELETE("/:id", appHandlers.ClusterHandler.Delete)
-	
+
 	cluster.GET("/:id/builds", appHandlers.ClusterHandler.BuildHistory)
 	cluster.POST("/:id/build-image", appHandlers.ClusterHandler.BuildImage)
 	cluster.POST("/:id/pull-image", appHandlers.ClusterHandler.PullImage)
