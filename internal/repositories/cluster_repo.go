@@ -41,9 +41,23 @@ func (r *ClusterRepository) ListByApplication(appId int64, clusterType *string) 
 	return clusters, nil
 }
 
-func (r *ClusterRepository) GetById(appId int64, id int64) (*entities.Cluster, error) {
+func (r *ClusterRepository) GetByAppAndId(appId int64, id int64) (*entities.Cluster, error) {
 	var s entities.Cluster
 	err := r.db.Get(&s, `SELECT * FROM clusters WHERE application_id = ? and id = ?`, appId, id)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &s, err
+}
+
+func (r *ClusterRepository) GetById(id int64) (*entities.Cluster, error) {
+	var s entities.Cluster
+	err := r.db.Get(&s, `SELECT * FROM clusters WHERE id = ?`, id)
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

@@ -9,6 +9,8 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
 	"github.com/moby/moby/client"
 	"github.com/ruhulfbr/mini-k8s/internal/appErrors"
 	"github.com/ruhulfbr/mini-k8s/internal/config"
@@ -128,6 +130,54 @@ func (ds *DockerService) PullImageWithTag(appName string, cluster *entities.Clus
 	return newImageTag, nil
 }
 
+func (ds *DockerService) DeployImage(cluster *entities.Cluster, buildInfo *entities.ClusterBuild) (string, error) {
+	ctx := context.Background()
+
+	containerName := ds.getContainerName(cluster.Id, cluster.Name)
+	resp, err := ds.cli.ContainerCreate(ctx, client.ContainerCreateOptions{
+		Config: &container.Config{
+			Image: buildInfo.ImageTag,
+		},
+		HostConfig: &container.HostConfig{
+			NetworkMode: "bridge",
+		},
+		NetworkingConfig: &network.NetworkingConfig{},
+		Name:             containerName,
+	})
+	if err != nil {
+		logger.Error(ctx, "Failed to create container", err,
+			"Cluster", cluster.Name,
+			"imageTag", buildInfo.ImageTag,
+			"Version", buildInfo.Version,
+		)
+		return "", appErrors.DockerFailedCreateContainer
+	}
+
+	// Start container
+	_, err = ds.cli.ContainerStart(ctx, resp.ID, client.ContainerStartOptions{})
+	if err != nil {
+		logger.Error(ctx, "Failed to run container", err,
+			"Cluster", cluster.Name,
+			"imageTag", buildInfo.ImageTag,
+			"Version", buildInfo.Version,
+		)
+		return "", appErrors.DockerFailedRunContainer
+	}
+
+	ip, err := ds.getContainerIP(ctx, resp.ID)
+	if err != nil {
+		logger.Error(ctx, "Failed to retrieve container IP", err,
+			"containerId", resp.ID,
+			"Cluster", cluster.Name,
+			"imageTag", buildInfo.ImageTag,
+			"Version", buildInfo.Version,
+		)
+		return "", err
+	}
+
+	return ip, nil
+}
+
 func (ds *DockerService) generateImageTag(appName string, clusterName string) string {
 	return fmt.Sprintf(
 		"%s-%s-%s",
@@ -137,17 +187,16 @@ func (ds *DockerService) generateImageTag(appName string, clusterName string) st
 	)
 }
 
-func (ds *DockerService) getContainerName(id, appName string, clusterName string) string {
+func (ds *DockerService) getContainerName(id int64, clusterName string) string {
 	return fmt.Sprintf(
-		"%s-%s-%s",
-		appName,
+		"%s-%d",
 		clusterName,
 		id,
 	)
 }
 
-func (ds *DockerService) getContainerIP(ctx context.Context, cli *client.Client, containerId string) (string, error) {
-	inspect, err := cli.ContainerInspect(ctx, containerId, client.ContainerInspectOptions{})
+func (ds *DockerService) getContainerIP(ctx context.Context, containerId string) (string, error) {
+	inspect, err := ds.cli.ContainerInspect(ctx, containerId, client.ContainerInspectOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -159,8 +208,7 @@ func (ds *DockerService) getContainerIP(ctx context.Context, cli *client.Client,
 	}
 
 	if ip == "" {
-		logger.Error(ctx, "Failed to get container IP", err, "containerId", containerId)
-		return "", appErrors.DockerContainerHasNoIP
+		return "", appErrors.DockerFailedRetrieveContainerIP
 	}
 
 	return ip, nil

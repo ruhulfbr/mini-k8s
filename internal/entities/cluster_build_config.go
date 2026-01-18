@@ -17,7 +17,7 @@ type ClusterBuildConfig struct {
 	UpdatedAt         time.Time `db:"updated_at"  json:"updated_at"`
 }
 
-func NewClusterBuildConfig(req *requests.BuildConfigRequest, clusterId ...int64) *ClusterBuildConfig {
+func ClusterBuildConfigFromRequest(req *requests.BuildConfigRequest, clusterId ...int64) *ClusterBuildConfig {
 	cfg := &ClusterBuildConfig{
 		GitRepo:           req.GitRepo,
 		GitBranch:         req.GitBranch,

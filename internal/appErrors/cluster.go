@@ -15,7 +15,12 @@ var (
 
 	NoBuildConfigFound = &AppError{
 		Code:    http.StatusNotFound,
-		Message: "No build config found with this cluster id Id",
+		Message: "No build config found with this cluster Id",
+	}
+
+	ClusterBuildInfoNotFound = &AppError{
+		Code:    http.StatusNotFound,
+		Message: "Cluster build info not found",
 	}
 
 	InvalidDeployMode = &AppError{

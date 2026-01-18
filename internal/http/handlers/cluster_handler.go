@@ -59,14 +59,14 @@ func (h *ClusterHandler) Create(c echo.Context) error {
 		return err
 	}
 
-	cl, err := entities.NewCluster(appId, req)
+	cl, err := entities.ClusterFromRequest(appId, req)
 	if err != nil {
 		return err
 	}
 
 	var cfg *entities.ClusterBuildConfig
 	if cl.DeployMode == entities.DeployModeBuild {
-		cfg = entities.NewClusterBuildConfig(req.Build)
+		cfg = entities.ClusterBuildConfigFromRequest(req.Build)
 	}
 
 	if err := h.service.Create(cl, cfg); err != nil {
@@ -88,13 +88,13 @@ func (h *ClusterHandler) Update(c echo.Context) error {
 		return err
 	}
 
-	cl, err := entities.NewCluster(appId, req)
+	cl, err := entities.ClusterFromRequest(appId, req)
 	if err != nil {
 		return err
 	}
 	var cfg *entities.ClusterBuildConfig
 	if cl.DeployMode == entities.DeployModeBuild {
-		cfg = entities.NewClusterBuildConfig(req.Build, id)
+		cfg = entities.ClusterBuildConfigFromRequest(req.Build, id)
 	}
 
 	if err := h.service.Update(cl, cfg); err != nil {
@@ -163,6 +163,17 @@ func (h *ClusterHandler) PullImage(c echo.Context) error {
 	}
 
 	service, err := h.service.PullDockerImage(appId, id, req.Version)
+	if err != nil {
+		return err
+	}
+
+	return responses.OK(c, service)
+}
+
+func (h *ClusterHandler) Deploy(c echo.Context) error {
+	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+
+	service, err := h.service.DeployImage(id)
 	if err != nil {
 		return err
 	}

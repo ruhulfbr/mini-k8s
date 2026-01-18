@@ -49,4 +49,19 @@ var (
 		Code:    http.StatusBadRequest,
 		Message: "Failed to add new tag to Docker image",
 	}
+
+	DockerFailedCreateContainer = &AppError{
+		Code:    http.StatusBadRequest,
+		Message: "Failed to create Docker container",
+	}
+
+	DockerFailedRunContainer = &AppError{
+		Code:    http.StatusBadRequest,
+		Message: "Failed to run Docker container",
+	}
+
+	DockerFailedRetrieveContainerIP = &AppError{
+		Code:    http.StatusBadRequest,
+		Message: "Failed to retrieve Docker container IP",
+	}
 )

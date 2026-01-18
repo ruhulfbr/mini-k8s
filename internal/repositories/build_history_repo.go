@@ -59,6 +59,20 @@ func (r *ClusterBuildRepository) GetById(clusterId int64, id int64) (*entities.C
 	return &bh, err
 }
 
+func (r *ClusterBuildRepository) GetLatestBuild(clusterId int64) (*entities.ClusterBuild, error) {
+	var bh entities.ClusterBuild
+	err := r.db.Get(&bh, `SELECT * FROM cluster_builds WHERE cluster_id = ? ORDER BY id DESC LIMIT 1`, clusterId)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &bh, err
+}
+
 func (r *ClusterBuildRepository) ExistsByVersion(clusterId int64, version string) bool {
 	var s entities.Cluster
 	err := r.db.Get(&s, `SELECT id FROM cluster_builds WHERE cluster_id = ? and version = ?`, clusterId, version)

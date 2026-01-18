@@ -59,7 +59,7 @@ func (r *ClusterBuildConfigRepository) Update(cfg *entities.ClusterBuildConfig) 
 	return err
 }
 
-func (r *ClusterBuildConfigRepository) GetByclusterId(clusterId int64) (*entities.ClusterBuildConfig, error) {
+func (r *ClusterBuildConfigRepository) GetByClusterId(clusterId int64) (*entities.ClusterBuildConfig, error) {
 	var cfg entities.ClusterBuildConfig
 
 	query := `SELECT * FROM cluster_build_configs WHERE cluster_id = ? LIMIT 1`

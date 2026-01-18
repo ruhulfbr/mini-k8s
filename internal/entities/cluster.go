@@ -42,7 +42,7 @@ type Cluster struct {
 	UpdatedAt       time.Time     `db:"updated_at"      json:"updated_at"`
 }
 
-func NewCluster(appId int64, req *requests.CreateClusterRequest, clusterId ...int64) (*Cluster, error) {
+func ClusterFromRequest(appId int64, req *requests.CreateClusterRequest, clusterId ...int64) (*Cluster, error) {
 	cluster := &Cluster{
 		ApplicationId: appId,
 		Name:          req.Name,

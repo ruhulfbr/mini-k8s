@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"regexp"
 
 	"github.com/ruhulfbr/mini-k8s/internal/appErrors"
@@ -50,7 +51,7 @@ func (s *ClusterService) GetByID(appId int64, id int64) (*entities.Cluster, erro
 		return nil, appErrors.NoApplicationFound
 	}
 
-	cluster, err := s.repo.GetById(appId, id)
+	cluster, err := s.repo.GetByAppAndId(appId, id)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +112,7 @@ func (s *ClusterService) Update(cluster *entities.Cluster, bCfg *entities.Cluste
 		return appErrors.NoApplicationFound
 	}
 
-	existing, err := s.repo.GetById(cluster.ApplicationId, cluster.Id)
+	existing, err := s.repo.GetByAppAndId(cluster.ApplicationId, cluster.Id)
 	if err != nil || existing == nil {
 		return appErrors.NoClusterFound
 	}
@@ -175,7 +176,7 @@ func (s *ClusterService) BuildDockerImage(appId int64, clusterId int64, version 
 		return nil, appErrors.NoApplicationFound
 	}
 
-	cluster, err := s.repo.GetById(appId, clusterId)
+	cluster, err := s.repo.GetByAppAndId(appId, clusterId)
 	if err != nil || cluster == nil {
 		return nil, appErrors.NoClusterFound
 	}
@@ -188,7 +189,7 @@ func (s *ClusterService) BuildDockerImage(appId int64, clusterId int64, version 
 		return nil, appErrors.DockerDuplicateVersion
 	}
 
-	buildConfig, err := s.buildConfigRepo.GetByclusterId(clusterId)
+	buildConfig, err := s.buildConfigRepo.GetByClusterId(clusterId)
 	if err != nil || buildConfig == nil {
 		return nil, appErrors.NoBuildConfigFound
 	}
@@ -225,7 +226,7 @@ func (s *ClusterService) PullDockerImage(appId int64, clusterId int64, version s
 		return nil, appErrors.NoApplicationFound
 	}
 
-	cluster, err := s.repo.GetById(appId, clusterId)
+	cluster, err := s.repo.GetByAppAndId(appId, clusterId)
 	if err != nil || cluster == nil {
 		return nil, appErrors.NoClusterFound
 	}
@@ -256,10 +257,33 @@ func (s *ClusterService) PullDockerImage(appId int64, clusterId int64, version s
 	return clusterBuild, nil
 }
 
+func (s *ClusterService) DeployImage(clusterId int64) error {
+	cluster, err := s.repo.GetById(clusterId)
+	if err != nil || cluster == nil {
+		return appErrors.NoClusterFound
+	}
+
+	latestBuild, err := s.buildRepo.GetLatestBuild(clusterId)
+	if err != nil {
+		return appErrors.ClusterBuildInfoNotFound
+	}
+
+	for _ = range cluster.Replicas {
+		containerIP, err := s.dockerService.DeployImage(cluster, latestBuild)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(containerIP)
+	}
+
+	return nil
+}
+
 // ---------------------- Private Methods ------------------------------
 
 func (s *ClusterService) updateBuildConfig(cfg *entities.ClusterBuildConfig) error {
-	exist, err := s.buildConfigRepo.GetByclusterId(cfg.ClusterId)
+	exist, err := s.buildConfigRepo.GetByClusterId(cfg.ClusterId)
 
 	if err != nil || exist == nil {
 		return s.buildConfigRepo.Create(cfg)
