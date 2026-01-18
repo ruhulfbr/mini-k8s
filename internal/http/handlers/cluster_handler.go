@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"net/http"
 	"strconv"
 
 	"github.com/labstack/echo/v4"
@@ -173,10 +174,10 @@ func (h *ClusterHandler) PullImage(c echo.Context) error {
 func (h *ClusterHandler) Deploy(c echo.Context) error {
 	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
-	service, err := h.service.DeployImage(id)
+	err := h.service.DeployImage(id)
 	if err != nil {
 		return err
 	}
 
-	return responses.OK(c, service)
+	return responses.Success(c, http.StatusOK, "Successfully deployed")
 }

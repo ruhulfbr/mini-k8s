@@ -87,7 +87,7 @@ func (ds *DockerService) BuildImage(buildConfig *entities.ClusterBuildConfig, ap
 func (ds *DockerService) PullImageWithTag(appName string, cluster *entities.Cluster) (string, error) {
 	ctx := context.Background()
 
-	imageTag := *cluster.CurrentImageTag
+	imageTag := *cluster.Image
 
 	reader, err := ds.cli.ImagePull(ctx, imageTag, client.ImagePullOptions{})
 	if err != nil {
@@ -133,7 +133,7 @@ func (ds *DockerService) PullImageWithTag(appName string, cluster *entities.Clus
 func (ds *DockerService) DeployImage(cluster *entities.Cluster, buildInfo *entities.ClusterBuild) (string, error) {
 	ctx := context.Background()
 
-	containerName := ds.getContainerName(cluster.Id, cluster.Name)
+	containerName := ds.getContainerName(cluster.Name)
 	resp, err := ds.cli.ContainerCreate(ctx, client.ContainerCreateOptions{
 		Config: &container.Config{
 			Image: buildInfo.ImageTag,
@@ -187,11 +187,11 @@ func (ds *DockerService) generateImageTag(appName string, clusterName string) st
 	)
 }
 
-func (ds *DockerService) getContainerName(id int64, clusterName string) string {
+func (ds *DockerService) getContainerName(clusterName string) string {
 	return fmt.Sprintf(
-		"%s-%d",
+		"%s-%s",
 		clusterName,
-		id,
+		utils.UniqueId(),
 	)
 }
 

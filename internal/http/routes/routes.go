@@ -47,7 +47,7 @@ func ConfigureRoutes(
 	cluster.POST("/:id/build-image", appHandlers.ClusterHandler.BuildImage)
 	cluster.POST("/:id/pull-image", appHandlers.ClusterHandler.PullImage)
 
-	cluster.POST("/deploy", appHandlers.ClusterHandler.Deploy)
+	cluster.POST("/:id/deploy", appHandlers.ClusterHandler.Deploy)
 
 	pods := api.Group("/clusters/:id/pods")
 	pods.GET("", appHandlers.PodHandler.ListByCluster)
