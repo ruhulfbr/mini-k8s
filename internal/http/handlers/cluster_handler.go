@@ -174,7 +174,18 @@ func (h *ClusterHandler) PullImage(c echo.Context) error {
 func (h *ClusterHandler) Deploy(c echo.Context) error {
 	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
-	err := h.service.DeployImage(id)
+	err := h.service.Deploy(id)
+	if err != nil {
+		return err
+	}
+
+	return responses.Success(c, http.StatusOK, "Successfully deployed")
+}
+
+func (h *ClusterHandler) RollingDeploy(c echo.Context) error {
+	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+
+	err := h.service.RollingDeploy(id)
 	if err != nil {
 		return err
 	}

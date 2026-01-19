@@ -1,7 +1,6 @@
 package services
 
 import (
-	"fmt"
 	"regexp"
 	"time"
 
@@ -20,13 +19,6 @@ type ClusterService struct {
 	gitService      *GitService
 	dockerService   *DockerService
 }
-
-type DeployStrategy string
-
-const (
-	RollingUpdate DeployStrategy = "RollingUpdate"
-	Recreate      DeployStrategy = "Recreate"
-)
 
 func NewClusterService(
 	repo *repositories.ClusterRepository,
@@ -268,130 +260,167 @@ func (s *ClusterService) PullDockerImage(appId int64, clusterId int64, version s
 	return clusterBuild, nil
 }
 
-func (s *ClusterService) DeployImage2(clusterId int64) error {
-	cluster, err := s.repo.GetById(clusterId)
-	if err != nil || cluster == nil {
-		return appErrors.NoClusterFound
-	}
-
-	latestBuild, err := s.buildRepo.GetLatestBuild(clusterId)
+func (s *ClusterService) Deploy(clusterId int64) error {
+	cluster, build, err := s.fetchClusterAndBuild(clusterId)
 	if err != nil {
-		return appErrors.ClusterBuildInfoNotFound
-	}
-
-	for _ = range cluster.Replicas {
-		containerInfo, err := s.dockerService.DeployImage(cluster, latestBuild)
-		if err != nil {
-			return err
-		}
-
-		clusterPod := entities.Pod{
-			ClusterId:     clusterId,
-			ContainerId:   containerInfo.ContainerID,
-			ContainerName: containerInfo.ContainerName,
-			IpAddress:     containerInfo.IP,
-		}
-
-		err = s.podRepo.Create(&clusterPod)
-		if err != nil {
-			return err
-		}
-	}
-
-	now := time.Now()
-
-	cluster.CurrentImageTag = &latestBuild.ImageTag
-	cluster.CurrentVersion = &latestBuild.Version
-	cluster.LastDeployedAt = &now
-	if err = s.repo.UpdateLatestVersion(cluster); err != nil {
-		fmt.Println("Update latest version error", err)
 		return err
 	}
 
-	latestBuild.DeployedAt = &now
-	if err = s.buildRepo.Update(latestBuild); err != nil {
+	existingPods, err := s.podRepo.GetByClusterId(clusterId)
+	if err != nil {
+		return err
+	}
+
+	if len(existingPods) == 0 {
+		logger.Info(nil, "No pods found for cluster start new deploy",
+			"clusterId", clusterId,
+		)
+		if err := s.scaleUp(cluster, build, cluster.Replicas); err != nil {
+			return err
+		}
+	} else {
+		if err := s.recreateUpdate(cluster, build, existingPods); err != nil {
+			return err
+		}
+	}
+
+	return s.updateMetadata(cluster, build)
+}
+
+func (s *ClusterService) RollingDeploy(clusterId int64) error {
+	cluster, build, err := s.fetchClusterAndBuild(clusterId)
+	if err != nil {
+		return err
+	}
+
+	if err := s.rollingUpdate(cluster, build); err != nil {
+		return err
+	}
+
+	return s.updateMetadata(cluster, build)
+}
+
+// ---------------------- Private Methods ------------------------------
+
+func (s *ClusterService) fetchClusterAndBuild(clusterId int64) (*entities.Cluster, *entities.ClusterBuild, error) {
+	cluster, err := s.repo.GetById(clusterId)
+	if err != nil || cluster == nil {
+		return nil, nil, appErrors.NoClusterFound
+	}
+
+	build, err := s.buildRepo.GetLatestBuild(clusterId)
+	if err != nil {
+		return nil, nil, appErrors.ClusterBuildInfoNotFound
+	}
+
+	return cluster, build, nil
+}
+
+func (s *ClusterService) recreateUpdate(cluster *entities.Cluster, build *entities.ClusterBuild, pods []entities.Pod) error {
+	if err := s.terminateAllPods(pods); err != nil {
+		return err
+	}
+
+	return s.scaleUp(cluster, build, cluster.Replicas)
+}
+
+func (s *ClusterService) rollingUpdate(cluster *entities.Cluster, build *entities.ClusterBuild) error {
+	for i := 0; i < cluster.Replicas; i++ {
+		if err := s.scaleDown(cluster.Id, 1); err != nil {
+			return err
+		}
+
+		if err := s.scaleUp(cluster, build, 1); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *ClusterService) scaleUp(cluster *entities.Cluster, build *entities.ClusterBuild, count int) error {
+	for i := 0; i < count; i++ {
+		if err := s.createPod(cluster, build); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *ClusterService) scaleDown(clusterId int64, count int) error {
+	pods, err := s.podRepo.GetByClusterId(clusterId)
+	if err != nil {
+		return err
+	}
+
+	for i := 0; i < count && i < len(pods); i++ {
+		if err := s.deletePod(&pods[i]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *ClusterService) terminateAllPods(pods []entities.Pod) error {
+	for _, pod := range pods {
+		err := s.deletePod(&pod)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *ClusterService) createPod(cluster *entities.Cluster, build *entities.ClusterBuild) error {
+	info, err := s.dockerService.DeployImage(cluster, build)
+	if err != nil {
+		return err
+	}
+
+	pod := &entities.Pod{
+		ClusterId:     cluster.Id,
+		ContainerId:   info.ContainerID,
+		ContainerName: info.ContainerName,
+		IpAddress:     info.IP,
+	}
+
+	if err := s.podRepo.Create(pod); err != nil {
+		_ = s.dockerService.DeleteContainer(*pod)
 		return err
 	}
 
 	return nil
 }
 
-func (s *ClusterService) DeployImage3(clusterId int64, strategy DeployStrategy) error {
-	cluster, err := s.repo.GetById(clusterId)
-	if err != nil || cluster == nil {
-		return appErrors.NoClusterFound
+func (s *ClusterService) deletePod(pod *entities.Pod) error {
+	if err := s.dockerService.DeleteContainer(*pod); err != nil {
+		return err
 	}
-
-	latestBuild, err := s.buildRepo.GetLatestBuild(clusterId)
-	if err != nil {
-		return appErrors.ClusterBuildInfoNotFound
+	if err := s.podRepo.Delete(pod.Id); err != nil {
+		return err
 	}
+	return nil
+}
 
-	isUpdate := cluster.CurrentVersion != nil && *cluster.CurrentVersion != latestBuild.Version
-
-	if isUpdate && strategy == Recreate {
-		existingPods, err := s.podRepo.GetByClusterId(clusterId)
-		if err != nil {
-			return err
-		}
-		for _, pod := range existingPods {
-			if err := s.dockerService.DeleteContainer(pod); err != nil {
-				return err
-			}
-			if err := s.podRepo.Delete(pod.Id); err != nil {
-				return err
-			}
-		}
-	}
-
-	for i := 0; i < cluster.Replicas; i++ {
-		if isUpdate && strategy == RollingUpdate {
-			existingPods, _ := s.podRepo.GetByClusterId(clusterId)
-			if len(existingPods) > 0 {
-				oldPod := existingPods[0]
-				_ = s.dockerService.DeleteContainer(oldPod)
-				_ = s.podRepo.Delete(oldPod.Id)
-			}
-		}
-
-		containerInfo, err := s.dockerService.DeployImage(cluster, latestBuild)
-		if err != nil {
-			return err
-		}
-
-		pod := &entities.Pod{
-			ClusterId:     clusterId,
-			ContainerId:   containerInfo.ContainerID,
-			ContainerName: containerInfo.ContainerName,
-			IpAddress:     containerInfo.IP,
-		}
-
-		if err := s.podRepo.Create(pod); err != nil {
-			return err
-		}
-	}
-
+func (s *ClusterService) updateMetadata(cluster *entities.Cluster, build *entities.ClusterBuild) error {
 	now := time.Now()
-	imageTag := latestBuild.ImageTag
-	version := latestBuild.Version
+	imageTag := build.ImageTag
+	version := build.Version
 
 	cluster.CurrentImageTag = &imageTag
 	cluster.CurrentVersion = &version
 	cluster.LastDeployedAt = &now
 
-	if err = s.repo.UpdateLatestVersion(cluster); err != nil {
+	if err := s.repo.UpdateLatestVersion(cluster); err != nil {
 		return err
 	}
 
-	latestBuild.DeployedAt = &now
-	if err = s.buildRepo.Update(latestBuild); err != nil {
+	build.DeployedAt = &now
+	if err := s.buildRepo.Update(build); err != nil {
 		return err
 	}
-
 	return nil
 }
-
-// ---------------------- Private Methods ------------------------------
 
 func (s *ClusterService) updateBuildConfig(cfg *entities.ClusterBuildConfig) error {
 	exist, err := s.buildConfigRepo.GetByClusterId(cfg.ClusterId)
