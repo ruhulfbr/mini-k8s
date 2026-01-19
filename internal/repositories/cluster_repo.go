@@ -3,6 +3,7 @@ package repositories
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/ruhulfbr/mini-k8s/internal/entities"
@@ -45,6 +46,9 @@ func (r *ClusterRepository) GetByAppAndId(appId int64, id int64) (*entities.Clus
 	err := r.db.Get(&s, `SELECT * FROM clusters WHERE application_id = ? and id = ?`, appId, id)
 
 	if err != nil {
+
+		fmt.Println("GetByAppAndId", err)
+
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}

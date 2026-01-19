@@ -32,4 +32,9 @@ var (
 		Code:    http.StatusUnprocessableEntity,
 		Message: "Invalid version format. Expected vMAJOR.MM.PP (e.g. v1.10.00)",
 	}
+
+	UnableToScaleDown = &AppError{
+		Code:    http.StatusBadRequest,
+		Message: "Unable to scale down, minimum one pod must be scaled down",
+	}
 )

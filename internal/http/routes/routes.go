@@ -49,6 +49,7 @@ func ConfigureRoutes(
 
 	cluster.POST("/:id/deploy", appHandlers.ClusterHandler.Deploy)
 	cluster.POST("/:id/rolling-deploy", appHandlers.ClusterHandler.RollingDeploy)
+	cluster.POST("/:id/scale", appHandlers.ClusterHandler.HandleScale)
 
 	//pods := api.Group("/clusters/:id/pods")
 	//pods.GET("", appHandlers.PodHandler.ListByCluster)

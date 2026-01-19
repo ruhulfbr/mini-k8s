@@ -194,11 +194,21 @@ func (ds *DockerService) DeployImage(cluster *entities.Cluster, buildInfo *entit
 func (ds *DockerService) DeleteContainer(pod entities.Pod) error {
 	ctx := context.Background()
 
+	_, err := ds.inspectContainer(ctx, pod.ContainerId)
+	if err != nil {
+		logger.Warn(ctx, "Container inspection failed, skipping deletion (container may not exist)", err,
+			"containerName", pod.ContainerName,
+			"containerId", pod.ContainerId,
+			"clusterId", pod.ClusterId,
+		)
+
+		return nil
+	}
+
 	if _, err := ds.cli.ContainerRemove(ctx, pod.ContainerName, client.ContainerRemoveOptions{
 		Force:         true,
 		RemoveVolumes: true,
 	}); err != nil {
-
 		logger.Error(ctx, "Failed to remove container", err,
 			"containerName", pod.ContainerName,
 			"containerId", pod.ContainerName,
@@ -229,7 +239,7 @@ func (ds *DockerService) generateContainerName(clusterName string) string {
 }
 
 func (ds *DockerService) getContainerIP(ctx context.Context, containerId string) (string, error) {
-	inspect, err := ds.cli.ContainerInspect(ctx, containerId, client.ContainerInspectOptions{})
+	inspect, err := ds.inspectContainer(ctx, containerId)
 	if err != nil {
 		return "", err
 	}
@@ -245,6 +255,15 @@ func (ds *DockerService) getContainerIP(ctx context.Context, containerId string)
 	}
 
 	return ip, nil
+}
+
+func (ds *DockerService) inspectContainer(ctx context.Context, containerId string) (client.ContainerInspectResult, error) {
+	inspect, err := ds.cli.ContainerInspect(ctx, containerId, client.ContainerInspectOptions{})
+	if err != nil {
+		return inspect, err
+	}
+
+	return inspect, nil
 }
 
 func (ds *DockerService) clusterDir(appName string, clusterName string) string {

@@ -156,6 +156,7 @@ func (s *ClusterService) Delete(appId int64, id int64) error {
 	// Pods
 	// Deleted Images
 	// Deleted Containers
+	// Stop load balancer
 
 	return s.repo.Delete(id)
 }
@@ -300,6 +301,39 @@ func (s *ClusterService) RollingDeploy(clusterId int64) error {
 	return s.updateMetadata(cluster, build)
 }
 
+func (s *ClusterService) HandleScale(clusterId int64, replicas int) error {
+	cluster, build, err := s.fetchClusterAndBuild(clusterId)
+	if err != nil {
+		return err
+	}
+
+	currentPods, err := s.podRepo.GetByClusterId(clusterId)
+	if err != nil {
+		return err
+	}
+
+	currentReplicas := len(currentPods)
+	desiredReplicas := replicas
+	delta := desiredReplicas - currentReplicas
+
+	switch {
+	case delta > 0:
+		if err := s.scaleUp(cluster, build, delta); err != nil {
+			return err
+		}
+	case delta < 0:
+		if err := s.scaleDown(clusterId, -delta); err != nil {
+			return err
+		}
+	default:
+		return nil
+	}
+
+	cluster.Replicas = replicas
+
+	return s.repo.Update(cluster)
+}
+
 // ---------------------- Private Methods ------------------------------
 
 func (s *ClusterService) fetchClusterAndBuild(clusterId int64) (*entities.Cluster, *entities.ClusterBuild, error) {
@@ -325,12 +359,17 @@ func (s *ClusterService) recreateUpdate(cluster *entities.Cluster, build *entiti
 }
 
 func (s *ClusterService) rollingUpdate(cluster *entities.Cluster, build *entities.ClusterBuild) error {
+	existingPods, err := s.podRepo.GetByClusterId(cluster.Id)
+	if err != nil {
+		return err
+	}
+
 	for i := 0; i < cluster.Replicas; i++ {
-		if err := s.scaleDown(cluster.Id, 1); err != nil {
+		if err := s.deletePod(&existingPods[i]); err != nil {
 			return err
 		}
 
-		if err := s.scaleUp(cluster, build, 1); err != nil {
+		if err := s.createPod(cluster, build); err != nil {
 			return err
 		}
 	}

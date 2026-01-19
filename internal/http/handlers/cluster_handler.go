@@ -89,7 +89,7 @@ func (h *ClusterHandler) Update(c echo.Context) error {
 		return err
 	}
 
-	cl, err := entities.ClusterFromRequest(appId, req)
+	cl, err := entities.ClusterFromRequest(appId, req, id)
 	if err != nil {
 		return err
 	}
@@ -191,4 +191,23 @@ func (h *ClusterHandler) RollingDeploy(c echo.Context) error {
 	}
 
 	return responses.Success(c, http.StatusOK, "Successfully deployed")
+}
+
+func (h *ClusterHandler) HandleScale(c echo.Context) error {
+	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+
+	req := new(requests.ScaleRequest)
+	if err := c.Bind(req); err != nil {
+		return appErrors.InvalidRequestBody
+	}
+	if err := c.Validate(req); err != nil {
+		return err
+	}
+
+	err := h.service.HandleScale(id, *req.Replicas)
+	if err != nil {
+		return err
+	}
+
+	return responses.Success(c, http.StatusOK, "Successfully scaled")
 }
