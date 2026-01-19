@@ -1,6 +1,9 @@
 package repositories
 
 import (
+	"database/sql"
+	"errors"
+
 	"github.com/jmoiron/sqlx"
 	"github.com/ruhulfbr/mini-k8s/internal/entities"
 )
@@ -10,9 +13,8 @@ type PodRepository struct {
 }
 
 type PodRepositoryInterface interface {
-	ListByCluster(clusterId int64, status *string) ([]entities.Pod, error)
+	GetByClusterId(clusterId int64) ([]entities.Pod, error)
 	Create(pod *entities.Pod) error
-	Update(pod *entities.Pod) error
 	Delete(id int64) error
 }
 
@@ -20,66 +22,54 @@ func NewPodRepository(db *sqlx.DB) *PodRepository {
 	return &PodRepository{db: db}
 }
 
-func (r *PodRepository) ListByCluster(clusterId int64, status *string) ([]entities.Pod, error) {
-	query := `
-		SELECT id, application_id, node_id, name, status, created_at
-		FROM pods
-		WHERE node_id = ?`
-	args := []any{clusterId}
-
-	if status != nil {
-		query += " AND status = ?"
-		args = append(args, *status)
-	}
-
-	rows, err := r.db.Query(query, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+func (r *PodRepository) GetByClusterId(clusterId int64) ([]entities.Pod, error) {
+	query := `SELECT * FROM pods WHERE cluster_id = ? order by id DESC`
 
 	var pods []entities.Pod
-	for rows.Next() {
-		var p entities.Pod
-		if err := rows.Scan(
-			&p.Id,
-			&p.ClusterId,
-			&p.Name,
-			&p.Status,
-			&p.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		pods = append(pods, p)
+	if err := r.db.Select(&pods, query, clusterId); err != nil {
+		return nil, err
 	}
 
 	return pods, nil
 }
 
+func (r *PodRepository) GetById(id int64) (*entities.Pod, error) {
+	var pod entities.Pod
+	err := r.db.Get(&pod, `SELECT * FROM pods WHERE id = ?`, id)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &pod, err
+}
+
 func (r *PodRepository) Create(p *entities.Pod) error {
 	return r.db.QueryRow(`
-		INSERT INTO pods (cluster_id, name, status)
+		INSERT INTO pods (cluster_id, container_name, container_id, ip_address)
 		VALUES (?, ?, ?, ?)
 		RETURNING id, created_at`,
 		p.ClusterId,
-		p.Name,
-		p.Status,
+		p.ContainerName,
+		p.ContainerId,
+		p.IpAddress,
 	).Scan(&p.Id, &p.CreatedAt)
 }
 
-func (r *PodRepository) Update(p *entities.Pod) error {
-	_, err := r.db.Exec(`
-		UPDATE pods
-		SET name = ?, status = ?
-		WHERE id = ?`,
-		p.Name,
-		p.Status,
-		p.Id,
-	)
-	return err
-}
-
 func (r *PodRepository) Delete(id int64) error {
-	_, err := r.db.Exec(`DELETE FROM pods WHERE id = ?`, id)
-	return err
+	res, err := r.db.Exec(`DELETE FROM pods WHERE id = ?`, id)
+
+	if err != nil {
+		return err
+	}
+
+	_, err = res.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

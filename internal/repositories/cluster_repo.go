@@ -3,7 +3,6 @@ package repositories
 import (
 	"database/sql"
 	"errors"
-	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/ruhulfbr/mini-k8s/internal/entities"
@@ -153,8 +152,14 @@ func (r *ClusterRepository) Update(s *entities.Cluster) error {
 	return nil
 }
 
-func (r *ClusterRepository) Delete(id int64) error {
-	res, err := r.db.Exec(`DELETE FROM clusters WHERE id = ?`, id)
+func (r *ClusterRepository) UpdateLatestVersion(s *entities.Cluster) error {
+	res, err := r.db.NamedExec(`
+		UPDATE clusters SET
+			current_image_tag = :current_image_tag,
+			current_version = :current_version,
+			last_deployed_at = :last_deployed_at
+		WHERE id = :id
+	`, s)
 
 	if err != nil {
 		return err
@@ -168,13 +173,8 @@ func (r *ClusterRepository) Delete(id int64) error {
 	return nil
 }
 
-func (r *ClusterRepository) UpdateLastDeployed(id int64, imageTag string, version string) error {
-	res, err := r.db.Exec(`
-		UPDATE clusters
-		SET last_deployed_at = ?, current_image_tag = ?, current_version = ? 
-		WHERE id = ?`,
-		time.Now(), id, imageTag, version,
-	)
+func (r *ClusterRepository) Delete(id int64) error {
+	res, err := r.db.Exec(`DELETE FROM clusters WHERE id = ?`, id)
 
 	if err != nil {
 		return err

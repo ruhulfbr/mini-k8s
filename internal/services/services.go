@@ -9,7 +9,6 @@ import (
 type Services struct {
 	ApplicationService *ApplicationService
 	ClusterService     *ClusterService
-	PodService         *PodService
 	GitService         *GitService
 	DockerService      *DockerService
 	NodeService        *NodeService
@@ -30,9 +29,9 @@ func InitServices(
 			repos.ClusterBuildConfigRepository,
 			repos.ApplicationRepository,
 			repos.ClusterBuildRepository,
+			repos.PodRepository,
 			gitService, dockerService,
 		),
-		PodService:  NewPodService(repos.PodRepository),
 		GitService:  gitService,
 		NodeService: NewNodeService(repos.PodRepository, asynqClient, lb),
 	}

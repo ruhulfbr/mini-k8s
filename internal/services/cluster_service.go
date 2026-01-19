@@ -3,6 +3,7 @@ package services
 import (
 	"fmt"
 	"regexp"
+	"time"
 
 	"github.com/ruhulfbr/mini-k8s/internal/appErrors"
 	"github.com/ruhulfbr/mini-k8s/internal/entities"
@@ -15,15 +16,24 @@ type ClusterService struct {
 	appRepo         *repositories.ApplicationRepository
 	buildConfigRepo *repositories.ClusterBuildConfigRepository
 	buildRepo       *repositories.ClusterBuildRepository
+	podRepo         *repositories.PodRepository
 	gitService      *GitService
 	dockerService   *DockerService
 }
+
+type DeployStrategy string
+
+const (
+	RollingUpdate DeployStrategy = "RollingUpdate"
+	Recreate      DeployStrategy = "Recreate"
+)
 
 func NewClusterService(
 	repo *repositories.ClusterRepository,
 	buildConfigRepo *repositories.ClusterBuildConfigRepository,
 	appRepo *repositories.ApplicationRepository,
 	buildRepo *repositories.ClusterBuildRepository,
+	podRepo *repositories.PodRepository,
 	gitService *GitService,
 	dockerService *DockerService,
 ) *ClusterService {
@@ -32,6 +42,7 @@ func NewClusterService(
 		buildConfigRepo: buildConfigRepo,
 		appRepo:         appRepo,
 		buildRepo:       buildRepo,
+		podRepo:         podRepo,
 		gitService:      gitService,
 		dockerService:   dockerService,
 	}
@@ -257,7 +268,7 @@ func (s *ClusterService) PullDockerImage(appId int64, clusterId int64, version s
 	return clusterBuild, nil
 }
 
-func (s *ClusterService) DeployImage(clusterId int64) error {
+func (s *ClusterService) DeployImage2(clusterId int64) error {
 	cluster, err := s.repo.GetById(clusterId)
 	if err != nil || cluster == nil {
 		return appErrors.NoClusterFound
@@ -269,12 +280,112 @@ func (s *ClusterService) DeployImage(clusterId int64) error {
 	}
 
 	for _ = range cluster.Replicas {
-		containerIP, err := s.dockerService.DeployImage(cluster, latestBuild)
+		containerInfo, err := s.dockerService.DeployImage(cluster, latestBuild)
 		if err != nil {
 			return err
 		}
 
-		fmt.Println(containerIP)
+		clusterPod := entities.Pod{
+			ClusterId:     clusterId,
+			ContainerId:   containerInfo.ContainerID,
+			ContainerName: containerInfo.ContainerName,
+			IpAddress:     containerInfo.IP,
+		}
+
+		err = s.podRepo.Create(&clusterPod)
+		if err != nil {
+			return err
+		}
+	}
+
+	now := time.Now()
+
+	cluster.CurrentImageTag = &latestBuild.ImageTag
+	cluster.CurrentVersion = &latestBuild.Version
+	cluster.LastDeployedAt = &now
+	if err = s.repo.UpdateLatestVersion(cluster); err != nil {
+		fmt.Println("Update latest version error", err)
+		return err
+	}
+
+	latestBuild.DeployedAt = &now
+	if err = s.buildRepo.Update(latestBuild); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *ClusterService) DeployImage3(clusterId int64, strategy DeployStrategy) error {
+	cluster, err := s.repo.GetById(clusterId)
+	if err != nil || cluster == nil {
+		return appErrors.NoClusterFound
+	}
+
+	latestBuild, err := s.buildRepo.GetLatestBuild(clusterId)
+	if err != nil {
+		return appErrors.ClusterBuildInfoNotFound
+	}
+
+	isUpdate := cluster.CurrentVersion != nil && *cluster.CurrentVersion != latestBuild.Version
+
+	if isUpdate && strategy == Recreate {
+		existingPods, err := s.podRepo.GetByClusterId(clusterId)
+		if err != nil {
+			return err
+		}
+		for _, pod := range existingPods {
+			if err := s.dockerService.DeleteContainer(pod); err != nil {
+				return err
+			}
+			if err := s.podRepo.Delete(pod.Id); err != nil {
+				return err
+			}
+		}
+	}
+
+	for i := 0; i < cluster.Replicas; i++ {
+		if isUpdate && strategy == RollingUpdate {
+			existingPods, _ := s.podRepo.GetByClusterId(clusterId)
+			if len(existingPods) > 0 {
+				oldPod := existingPods[0]
+				_ = s.dockerService.DeleteContainer(oldPod)
+				_ = s.podRepo.Delete(oldPod.Id)
+			}
+		}
+
+		containerInfo, err := s.dockerService.DeployImage(cluster, latestBuild)
+		if err != nil {
+			return err
+		}
+
+		pod := &entities.Pod{
+			ClusterId:     clusterId,
+			ContainerId:   containerInfo.ContainerID,
+			ContainerName: containerInfo.ContainerName,
+			IpAddress:     containerInfo.IP,
+		}
+
+		if err := s.podRepo.Create(pod); err != nil {
+			return err
+		}
+	}
+
+	now := time.Now()
+	imageTag := latestBuild.ImageTag
+	version := latestBuild.Version
+
+	cluster.CurrentImageTag = &imageTag
+	cluster.CurrentVersion = &version
+	cluster.LastDeployedAt = &now
+
+	if err = s.repo.UpdateLatestVersion(cluster); err != nil {
+		return err
+	}
+
+	latestBuild.DeployedAt = &now
+	if err = s.buildRepo.Update(latestBuild); err != nil {
+		return err
 	}
 
 	return nil

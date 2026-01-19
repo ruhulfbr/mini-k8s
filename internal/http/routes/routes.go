@@ -49,10 +49,10 @@ func ConfigureRoutes(
 
 	cluster.POST("/:id/deploy", appHandlers.ClusterHandler.Deploy)
 
-	pods := api.Group("/clusters/:id/pods")
-	pods.GET("", appHandlers.PodHandler.ListByCluster)
-	pods.POST("", appHandlers.PodHandler.Create)
-	pods.DELETE("/:id", appHandlers.PodHandler.Delete)
+	//pods := api.Group("/clusters/:id/pods")
+	//pods.GET("", appHandlers.PodHandler.ListByCluster)
+	//pods.POST("", appHandlers.PodHandler.Create)
+	//pods.DELETE("/:id", appHandlers.PodHandler.Delete)
 
 	api.POST("/deploy-old", appHandlers.NodeHandler.HandleDeploy)
 	api.POST("/scale", appHandlers.NodeHandler.HandleScale)

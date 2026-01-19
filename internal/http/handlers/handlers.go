@@ -11,7 +11,6 @@ import (
 type Handlers struct {
 	ApplicationHandler *ApplicationHandler
 	ClusterHandler     *ClusterHandler
-	PodHandler         *PodHandler
 	NodeHandler        *NodeHandler
 }
 
@@ -27,7 +26,6 @@ func InitHandlers(
 	return &Handlers{
 		ApplicationHandler: NewApplicationHandler(appServices.ApplicationService),
 		ClusterHandler:     NewClusterHandler(appServices.ClusterService),
-		PodHandler:         NewPodHandler(appServices.PodService),
 		NodeHandler:        NewNodeHandler(appServices.NodeService),
 	}
 }

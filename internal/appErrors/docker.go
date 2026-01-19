@@ -64,4 +64,9 @@ var (
 		Code:    http.StatusBadRequest,
 		Message: "Failed to retrieve Docker container IP",
 	}
+
+	DockerFailedDeleteContainer = &AppError{
+		Code:    http.StatusBadRequest,
+		Message: "Failed to delete Docker container",
+	}
 )

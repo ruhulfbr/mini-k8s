@@ -25,6 +25,12 @@ type DockerService struct {
 	cli          *client.Client
 }
 
+type ContainerInfo struct {
+	IP            string
+	ContainerID   string
+	ContainerName string
+}
+
 func NewDockerService() *DockerService {
 	cli, err := client.New(client.FromEnv)
 	if err != nil {
@@ -130,10 +136,10 @@ func (ds *DockerService) PullImageWithTag(appName string, cluster *entities.Clus
 	return newImageTag, nil
 }
 
-func (ds *DockerService) DeployImage(cluster *entities.Cluster, buildInfo *entities.ClusterBuild) (string, error) {
+func (ds *DockerService) DeployImage(cluster *entities.Cluster, buildInfo *entities.ClusterBuild) (*ContainerInfo, error) {
 	ctx := context.Background()
 
-	containerName := ds.getContainerName(cluster.Name)
+	containerName := ds.generateContainerName(cluster.Name)
 	resp, err := ds.cli.ContainerCreate(ctx, client.ContainerCreateOptions{
 		Config: &container.Config{
 			Image: buildInfo.ImageTag,
@@ -146,36 +152,63 @@ func (ds *DockerService) DeployImage(cluster *entities.Cluster, buildInfo *entit
 	})
 	if err != nil {
 		logger.Error(ctx, "Failed to create container", err,
+			"containerName", containerName,
 			"Cluster", cluster.Name,
 			"imageTag", buildInfo.ImageTag,
 			"Version", buildInfo.Version,
 		)
-		return "", appErrors.DockerFailedCreateContainer
+		return nil, appErrors.DockerFailedCreateContainer
 	}
 
 	// Start container
 	_, err = ds.cli.ContainerStart(ctx, resp.ID, client.ContainerStartOptions{})
 	if err != nil {
 		logger.Error(ctx, "Failed to run container", err,
+			"containerName", containerName,
 			"Cluster", cluster.Name,
 			"imageTag", buildInfo.ImageTag,
 			"Version", buildInfo.Version,
 		)
-		return "", appErrors.DockerFailedRunContainer
+		return nil, appErrors.DockerFailedRunContainer
 	}
 
 	ip, err := ds.getContainerIP(ctx, resp.ID)
 	if err != nil {
 		logger.Error(ctx, "Failed to retrieve container IP", err,
 			"containerId", resp.ID,
+			"containerName", containerName,
 			"Cluster", cluster.Name,
 			"imageTag", buildInfo.ImageTag,
 			"Version", buildInfo.Version,
 		)
-		return "", err
+		return nil, err
 	}
 
-	return ip, nil
+	return &ContainerInfo{
+		IP:            ip,
+		ContainerID:   resp.ID,
+		ContainerName: containerName,
+	}, nil
+}
+
+func (ds *DockerService) DeleteContainer(pod entities.Pod) error {
+	ctx := context.Background()
+
+	if _, err := ds.cli.ContainerRemove(ctx, pod.ContainerName, client.ContainerRemoveOptions{
+		Force:         true,
+		RemoveVolumes: true,
+	}); err != nil {
+
+		logger.Error(ctx, "Failed to remove container", err,
+			"containerName", pod.ContainerName,
+			"containerId", pod.ContainerName,
+			"clusterId", pod.ClusterId,
+		)
+
+		return appErrors.DockerFailedDeleteContainer
+	}
+
+	return nil
 }
 
 func (ds *DockerService) generateImageTag(appName string, clusterName string) string {
@@ -187,7 +220,7 @@ func (ds *DockerService) generateImageTag(appName string, clusterName string) st
 	)
 }
 
-func (ds *DockerService) getContainerName(clusterName string) string {
+func (ds *DockerService) generateContainerName(clusterName string) string {
 	return fmt.Sprintf(
 		"%s-%s",
 		clusterName,

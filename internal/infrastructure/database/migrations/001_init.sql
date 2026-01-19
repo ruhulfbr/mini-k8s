@@ -96,17 +96,15 @@ CREATE INDEX IF NOT EXISTS idx_cluster_builds_cluster_id
 -- =====================================================
 CREATE TABLE IF NOT EXISTS pods
 (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    cluster_id INTEGER NOT NULL,           -- FK to clusters
-    name       TEXT    NOT NULL,           -- Pod name
-    status     INTEGER NOT NULL DEFAULT 0, -- Status (1=running, 0=pending)
-    created_at DATETIME         DEFAULT CURRENT_TIMESTAMP,
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    cluster_id     INTEGER NOT NULL, -- FK to clusters
+    container_id   TEXT    NOT NULL, -- Container id
+    container_name TEXT    NOT NULL, -- Container name
+    ip_address     TEXT    NOT NULL, -- Container IP Address
+    created_at     DATETIME DEFAULT CURRENT_TIMESTAMP,
 
     FOREIGN KEY (cluster_id) REFERENCES clusters (id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_pods_cluster_id
     ON pods (cluster_id);
-
-CREATE INDEX IF NOT EXISTS idx_pods_status
-    ON pods (status);

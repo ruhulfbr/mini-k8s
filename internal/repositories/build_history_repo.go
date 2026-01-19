@@ -60,8 +60,8 @@ func (r *ClusterBuildRepository) GetById(clusterId int64, id int64) (*entities.C
 }
 
 func (r *ClusterBuildRepository) GetLatestBuild(clusterId int64) (*entities.ClusterBuild, error) {
-	var bh entities.ClusterBuild
-	err := r.db.Get(&bh, `SELECT * FROM cluster_builds WHERE cluster_id = ? ORDER BY id DESC LIMIT 1`, clusterId)
+	var cb entities.ClusterBuild
+	err := r.db.Get(&cb, `SELECT * FROM cluster_builds WHERE cluster_id = ? ORDER BY id DESC LIMIT 1`, clusterId)
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -70,12 +70,12 @@ func (r *ClusterBuildRepository) GetLatestBuild(clusterId int64) (*entities.Clus
 		return nil, err
 	}
 
-	return &bh, err
+	return &cb, err
 }
 
 func (r *ClusterBuildRepository) ExistsByVersion(clusterId int64, version string) bool {
-	var s entities.Cluster
-	err := r.db.Get(&s, `SELECT id FROM cluster_builds WHERE cluster_id = ? and version = ?`, clusterId, version)
+	var cb entities.ClusterBuild
+	err := r.db.Get(&cb, `SELECT id FROM cluster_builds WHERE cluster_id = ? and version = ?`, clusterId, version)
 
 	if err != nil {
 		return false
@@ -85,7 +85,7 @@ func (r *ClusterBuildRepository) ExistsByVersion(clusterId int64, version string
 }
 
 func (r *ClusterBuildRepository) ExistsByImage(clusterId int64, imageTag string) bool {
-	var cb entities.Cluster
+	var cb entities.ClusterBuild
 	err := r.db.Get(&cb, `SELECT id FROM cluster_builds WHERE cluster_id = ? and image_tag = ?`, clusterId, imageTag)
 
 	if err != nil {
@@ -93,6 +93,28 @@ func (r *ClusterBuildRepository) ExistsByImage(clusterId int64, imageTag string)
 	}
 
 	return true
+}
+
+func (r *ClusterBuildRepository) Update(cb *entities.ClusterBuild) error {
+	res, err := r.db.NamedExec(`
+		UPDATE cluster_builds SET
+			cluster_id = :cluster_id,
+			version = :version,
+			image_tag = :image_tag,
+			deployed_at = :deployed_at
+		WHERE id = :id
+	`, cb)
+
+	if err != nil {
+		return err
+	}
+
+	_, err = res.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (r *ClusterBuildRepository) Delete(id int64) error {
