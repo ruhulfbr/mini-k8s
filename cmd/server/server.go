@@ -17,7 +17,6 @@ import (
 	"github.com/ruhulfbr/mini-k8s/internal/http/routes"
 	"github.com/ruhulfbr/mini-k8s/internal/http/validator"
 	"github.com/ruhulfbr/mini-k8s/internal/infrastructure/database"
-	"github.com/ruhulfbr/mini-k8s/internal/loadBalancer"
 )
 
 const shutdownTimeout = 20 * time.Second
@@ -45,11 +44,7 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func InitServer(
-	ds *database.Database,
-	asynqClient *asynq.Client,
-	lb *loadBalancer.LoadBalancer,
-) (*Server, error) {
+func InitServer(ds *database.Database, asynqClient *asynq.Client) (*Server, error) {
 	engine := echo.New()
 
 	engine.Server.ReadTimeout = 15 * time.Second
@@ -58,7 +53,7 @@ func InitServer(
 
 	engine.Validator = validator.New()
 
-	routes.ConfigureRoutes(engine, ds, asynqClient, lb)
+	routes.ConfigureRoutes(engine, ds, asynqClient)
 
 	return NewServer(engine), nil
 }

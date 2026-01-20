@@ -1,60 +1,62 @@
 package services
 
 import (
+	"context"
 	"regexp"
-	"time"
 
+	"github.com/hibiken/asynq"
 	"github.com/ruhulfbr/mini-k8s/internal/appErrors"
 	"github.com/ruhulfbr/mini-k8s/internal/entities"
 	"github.com/ruhulfbr/mini-k8s/internal/infrastructure/logger"
 	"github.com/ruhulfbr/mini-k8s/internal/repositories"
+	"github.com/ruhulfbr/mini-k8s/internal/tasks"
 )
 
 type ClusterService struct {
-	repo            *repositories.ClusterRepository
-	appRepo         *repositories.ApplicationRepository
+	clusterRepo     *repositories.ClusterRepository
+	applicationRepo *repositories.ApplicationRepository
 	buildConfigRepo *repositories.ClusterBuildConfigRepository
 	buildRepo       *repositories.ClusterBuildRepository
 	podRepo         *repositories.PodRepository
 	gitService      *GitService
-	dockerService   *DockerService
+	asynqClient     *asynq.Client
 }
 
 func NewClusterService(
-	repo *repositories.ClusterRepository,
+	clusterRepo *repositories.ClusterRepository,
 	buildConfigRepo *repositories.ClusterBuildConfigRepository,
-	appRepo *repositories.ApplicationRepository,
+	applicationRepo *repositories.ApplicationRepository,
 	buildRepo *repositories.ClusterBuildRepository,
 	podRepo *repositories.PodRepository,
 	gitService *GitService,
-	dockerService *DockerService,
+	asynqClient *asynq.Client,
 ) *ClusterService {
 	return &ClusterService{
-		repo:            repo,
+		clusterRepo:     clusterRepo,
 		buildConfigRepo: buildConfigRepo,
-		appRepo:         appRepo,
+		applicationRepo: applicationRepo,
 		buildRepo:       buildRepo,
 		podRepo:         podRepo,
 		gitService:      gitService,
-		dockerService:   dockerService,
+		asynqClient:     asynqClient,
 	}
 }
 
 func (s *ClusterService) ListByApplication(appId int64, clusterType *string) ([]entities.Cluster, error) {
-	if s.appRepo.ExistsById(appId) == false {
+	if s.applicationRepo.ExistsById(appId) == false {
 		return nil, appErrors.NoApplicationFound
 	}
 
-	return s.repo.ListByApplication(appId, clusterType)
+	return s.clusterRepo.ListByApplication(appId, clusterType)
 }
 
 func (s *ClusterService) GetByID(appId int64, id int64) (*entities.Cluster, error) {
-	application, err := s.appRepo.GetByID(appId)
+	application, err := s.applicationRepo.GetByID(appId)
 	if err != nil || application == nil {
 		return nil, appErrors.NoApplicationFound
 	}
 
-	cluster, err := s.repo.GetByAppAndId(appId, id)
+	cluster, err := s.clusterRepo.GetByAppAndId(appId, id)
 	if err != nil {
 		return nil, err
 	}
@@ -73,12 +75,12 @@ func (s *ClusterService) Create(cluster *entities.Cluster, bCfg *entities.Cluste
 		}
 	}
 
-	application, err := s.appRepo.GetByID(cluster.ApplicationId)
+	application, err := s.applicationRepo.GetByID(cluster.ApplicationId)
 	if err != nil || application == nil {
 		return appErrors.NoApplicationFound
 	}
 
-	if s.repo.ExistsByName(cluster.ApplicationId, cluster.Name) {
+	if s.clusterRepo.ExistsByName(cluster.ApplicationId, cluster.Name) {
 		return appErrors.ClusterAlreadyExist
 	}
 
@@ -89,7 +91,7 @@ func (s *ClusterService) Create(cluster *entities.Cluster, bCfg *entities.Cluste
 		cluster.Replicas = 1
 	}
 
-	if err := s.repo.Create(cluster); err != nil {
+	if err := s.clusterRepo.Create(cluster); err != nil {
 		return err
 	}
 
@@ -110,21 +112,21 @@ func (s *ClusterService) Update(cluster *entities.Cluster, bCfg *entities.Cluste
 		}
 	}
 
-	application, err := s.appRepo.GetByID(cluster.ApplicationId)
+	application, err := s.applicationRepo.GetByID(cluster.ApplicationId)
 	if err != nil || application == nil {
 		return appErrors.NoApplicationFound
 	}
 
-	existing, err := s.repo.GetByAppAndId(cluster.ApplicationId, cluster.Id)
+	existing, err := s.clusterRepo.GetByAppAndId(cluster.ApplicationId, cluster.Id)
 	if err != nil || existing == nil {
 		return appErrors.NoClusterFound
 	}
 
-	if s.repo.ExistsByNameExceptId(cluster.ApplicationId, cluster.Name, cluster.Id) {
+	if s.clusterRepo.ExistsByNameExceptId(cluster.ApplicationId, cluster.Name, cluster.Id) {
 		return appErrors.ClusterAlreadyExist
 	}
 
-	if err := s.repo.Update(cluster); err != nil {
+	if err := s.clusterRepo.Update(cluster); err != nil {
 		return err
 	}
 
@@ -151,14 +153,17 @@ func (s *ClusterService) Delete(appId int64, id int64) error {
 		return err
 	}
 
-	// Delete build Config
-	// Delete build History
-	// Pods
-	// Deleted Images
-	// Deleted Containers
-	// Stop load balancer
-
-	return s.repo.Delete(id)
+	ctx := context.Background()
+	task := tasks.DeleteClusterTask(&tasks.DeleteClusterPayload{
+		ClusterId: id,
+	})
+	if _, err := s.asynqClient.EnqueueContext(ctx, task); err != nil {
+		logger.Error(ctx, "Delete cluster task error", err,
+			"ClusterId", id,
+		)
+		return appErrors.SomethingWentWrong
+	}
+	return nil
 }
 
 func (s *ClusterService) GetBuildHistory(appId int64, id int64) ([]entities.ClusterBuild, error) {
@@ -170,95 +175,94 @@ func (s *ClusterService) GetBuildHistory(appId int64, id int64) ([]entities.Clus
 	return s.buildRepo.GetByCluster(id)
 }
 
-func (s *ClusterService) BuildDockerImage(appId int64, clusterId int64, version string) (*entities.ClusterBuild, error) {
+func (s *ClusterService) BuildDockerImage(appId int64, clusterId int64, version string) error {
 	if err := validateVersionText(version); err != nil {
-		return nil, err
+		return err
 	}
 
-	application, err := s.appRepo.GetByID(appId)
+	application, err := s.applicationRepo.GetByID(appId)
 	if err != nil || application == nil {
-		return nil, appErrors.NoApplicationFound
+		return appErrors.NoApplicationFound
 	}
 
-	cluster, err := s.repo.GetByAppAndId(appId, clusterId)
+	cluster, err := s.clusterRepo.GetByAppAndId(appId, clusterId)
 	if err != nil || cluster == nil {
-		return nil, appErrors.NoClusterFound
+		return appErrors.NoClusterFound
 	}
 
 	if cluster.DeployMode != entities.DeployModeBuild {
-		return nil, appErrors.InvalidDeployMode
+		return appErrors.InvalidDeployMode
 	}
 
 	if s.buildRepo.ExistsByVersion(clusterId, version) {
-		return nil, appErrors.DockerDuplicateVersion
+		return appErrors.DuplicateBuildVersion
 	}
 
 	buildConfig, err := s.buildConfigRepo.GetByClusterId(clusterId)
 	if err != nil || buildConfig == nil {
-		return nil, appErrors.NoBuildConfigFound
+		return appErrors.NoBuildConfigFound
 	}
 
-	if err := s.gitService.PullApplication(application.Name, cluster.Name, buildConfig); err != nil {
-		return nil, err
+	ctx := context.Background()
+	task := tasks.BuildDockerImageTask(&tasks.BuildDockerImagePayload{
+		ApplicationId:   appId,
+		ApplicationName: application.Name,
+		ClusterId:       cluster.Id,
+		ClusterName:     cluster.Name,
+		Version:         version,
+		BuildConfig:     *buildConfig,
+	})
+	if _, err := s.asynqClient.EnqueueContext(ctx, task); err != nil {
+		logger.Error(ctx, "Enqueue build docker image task error", err,
+			"ApplicationId", appId,
+			"ClusterId", clusterId,
+			"Version", version,
+		)
+		return appErrors.SomethingWentWrong
 	}
 
-	imageTag, err := s.dockerService.BuildImage(buildConfig, application.Name, cluster.Name)
-	if err != nil {
-		return nil, err
-	}
-
-	clusterBuild := &entities.ClusterBuild{
-		ClusterId: cluster.Id,
-		Version:   version,
-		ImageTag:  imageTag,
-	}
-
-	if err := s.buildRepo.Create(clusterBuild); err != nil {
-		return nil, err
-	}
-
-	return clusterBuild, nil
+	return nil
 }
 
-func (s *ClusterService) PullDockerImage(appId int64, clusterId int64, version string) (*entities.ClusterBuild, error) {
+func (s *ClusterService) PullDockerImage(appId int64, clusterId int64, version string) error {
 	if err := validateVersionText(version); err != nil {
-		return nil, err
+		return err
 	}
 
-	application, err := s.appRepo.GetByID(appId)
+	application, err := s.applicationRepo.GetByID(appId)
 	if err != nil || application == nil {
-		return nil, appErrors.NoApplicationFound
+		return appErrors.NoApplicationFound
 	}
 
-	cluster, err := s.repo.GetByAppAndId(appId, clusterId)
+	cluster, err := s.clusterRepo.GetByAppAndId(appId, clusterId)
 	if err != nil || cluster == nil {
-		return nil, appErrors.NoClusterFound
+		return appErrors.NoClusterFound
 	}
 
 	if cluster.DeployMode != entities.DeployModeImage {
-		return nil, appErrors.InvalidDeployMode
+		return appErrors.InvalidDeployMode
 	}
 
 	if s.buildRepo.ExistsByVersion(clusterId, version) {
-		return nil, appErrors.DockerDuplicateVersion
+		return appErrors.DuplicateBuildVersion
 	}
 
-	newImageTag, err := s.dockerService.PullImageWithTag(application.Name, cluster)
-	if err != nil {
-		return nil, err
+	ctx := context.Background()
+	task := tasks.PullDockerImageTask(&tasks.PullDockerImagePayload{
+		ApplicationName: application.Name,
+		Cluster:         *cluster,
+		Version:         version,
+	})
+	if _, err := s.asynqClient.EnqueueContext(ctx, task); err != nil {
+		logger.Error(ctx, "Enqueue pull docker image task error", err,
+			"ApplicationId", appId,
+			"ClusterId", clusterId,
+			"Version", version,
+		)
+		return appErrors.SomethingWentWrong
 	}
 
-	clusterBuild := &entities.ClusterBuild{
-		ClusterId: cluster.Id,
-		Version:   version,
-		ImageTag:  newImageTag,
-	}
-
-	if err := s.buildRepo.Create(clusterBuild); err != nil {
-		return nil, err
-	}
-
-	return clusterBuild, nil
+	return nil
 }
 
 func (s *ClusterService) Deploy(clusterId int64) error {
@@ -267,25 +271,21 @@ func (s *ClusterService) Deploy(clusterId int64) error {
 		return err
 	}
 
-	existingPods, err := s.podRepo.GetByClusterId(clusterId)
-	if err != nil {
-		return err
-	}
-
-	if len(existingPods) == 0 {
-		logger.Info(nil, "No pods found for cluster start new deploy",
-			"clusterId", clusterId,
+	ctx := context.Background()
+	task := tasks.DeployClusterTask(&tasks.DeployClusterPayload{
+		Cluster:      *cluster,
+		ClusterBuild: *build,
+	})
+	if _, err := s.asynqClient.EnqueueContext(ctx, task); err != nil {
+		logger.Error(ctx, "Enqueue deploy cluster task error", err,
+			"ApplicationId", cluster.ApplicationId,
+			"ClusterId", clusterId,
+			"Replicas", cluster.Replicas,
 		)
-		if err := s.scaleUp(cluster, build, cluster.Replicas); err != nil {
-			return err
-		}
-	} else {
-		if err := s.recreateUpdate(cluster, build, existingPods); err != nil {
-			return err
-		}
+		return appErrors.SomethingWentWrong
 	}
 
-	return s.updateMetadata(cluster, build)
+	return nil
 }
 
 func (s *ClusterService) RollingDeploy(clusterId int64) error {
@@ -294,11 +294,21 @@ func (s *ClusterService) RollingDeploy(clusterId int64) error {
 		return err
 	}
 
-	if err := s.rollingUpdate(cluster, build); err != nil {
-		return err
+	ctx := context.Background()
+	task := tasks.RollingDeployClusterTask(&tasks.RollingDeployClusterPayload{
+		Cluster:      *cluster,
+		ClusterBuild: *build,
+	})
+	if _, err := s.asynqClient.EnqueueContext(ctx, task); err != nil {
+		logger.Error(ctx, "Enqueue rolling deploy cluster task error", err,
+			"ApplicationId", cluster.ApplicationId,
+			"ClusterId", clusterId,
+			"Replicas", cluster.Replicas,
+		)
+		return appErrors.SomethingWentWrong
 	}
 
-	return s.updateMetadata(cluster, build)
+	return nil
 }
 
 func (s *ClusterService) HandleScale(clusterId int64, replicas int) error {
@@ -307,37 +317,28 @@ func (s *ClusterService) HandleScale(clusterId int64, replicas int) error {
 		return err
 	}
 
-	currentPods, err := s.podRepo.GetByClusterId(clusterId)
-	if err != nil {
-		return err
+	ctx := context.Background()
+	task := tasks.ScaleClusterTask(&tasks.ScaleClusterPayload{
+		Cluster:      *cluster,
+		ClusterBuild: *build,
+		Replicas:     replicas,
+	})
+	if _, err := s.asynqClient.EnqueueContext(ctx, task); err != nil {
+		logger.Error(ctx, "Enqueue Scale cluster task error", err,
+			"ApplicationId", cluster.ApplicationId,
+			"ClusterId", clusterId,
+			"Replicas", cluster.Replicas,
+		)
+		return appErrors.SomethingWentWrong
 	}
 
-	currentReplicas := len(currentPods)
-	desiredReplicas := replicas
-	delta := desiredReplicas - currentReplicas
-
-	switch {
-	case delta > 0:
-		if err := s.scaleUp(cluster, build, delta); err != nil {
-			return err
-		}
-	case delta < 0:
-		if err := s.scaleDown(clusterId, -delta); err != nil {
-			return err
-		}
-	default:
-		return nil
-	}
-
-	cluster.Replicas = replicas
-
-	return s.repo.Update(cluster)
+	return nil
 }
 
 // ---------------------- Private Methods ------------------------------
 
 func (s *ClusterService) fetchClusterAndBuild(clusterId int64) (*entities.Cluster, *entities.ClusterBuild, error) {
-	cluster, err := s.repo.GetById(clusterId)
+	cluster, err := s.clusterRepo.GetById(clusterId)
 	if err != nil || cluster == nil {
 		return nil, nil, appErrors.NoClusterFound
 	}
@@ -348,117 +349,6 @@ func (s *ClusterService) fetchClusterAndBuild(clusterId int64) (*entities.Cluste
 	}
 
 	return cluster, build, nil
-}
-
-func (s *ClusterService) recreateUpdate(cluster *entities.Cluster, build *entities.ClusterBuild, pods []entities.Pod) error {
-	if err := s.terminateAllPods(pods); err != nil {
-		return err
-	}
-
-	return s.scaleUp(cluster, build, cluster.Replicas)
-}
-
-func (s *ClusterService) rollingUpdate(cluster *entities.Cluster, build *entities.ClusterBuild) error {
-	existingPods, err := s.podRepo.GetByClusterId(cluster.Id)
-	if err != nil {
-		return err
-	}
-
-	for i := 0; i < cluster.Replicas; i++ {
-		if err := s.deletePod(&existingPods[i]); err != nil {
-			return err
-		}
-
-		if err := s.createPod(cluster, build); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (s *ClusterService) scaleUp(cluster *entities.Cluster, build *entities.ClusterBuild, count int) error {
-	for i := 0; i < count; i++ {
-		if err := s.createPod(cluster, build); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (s *ClusterService) scaleDown(clusterId int64, count int) error {
-	pods, err := s.podRepo.GetByClusterId(clusterId)
-	if err != nil {
-		return err
-	}
-
-	for i := 0; i < count && i < len(pods); i++ {
-		if err := s.deletePod(&pods[i]); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (s *ClusterService) terminateAllPods(pods []entities.Pod) error {
-	for _, pod := range pods {
-		err := s.deletePod(&pod)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (s *ClusterService) createPod(cluster *entities.Cluster, build *entities.ClusterBuild) error {
-	info, err := s.dockerService.DeployImage(cluster, build)
-	if err != nil {
-		return err
-	}
-
-	pod := &entities.Pod{
-		ClusterId:     cluster.Id,
-		ContainerId:   info.ContainerID,
-		ContainerName: info.ContainerName,
-		IpAddress:     info.IP,
-	}
-
-	if err := s.podRepo.Create(pod); err != nil {
-		_ = s.dockerService.DeleteContainer(*pod)
-		return err
-	}
-
-	return nil
-}
-
-func (s *ClusterService) deletePod(pod *entities.Pod) error {
-	if err := s.dockerService.DeleteContainer(*pod); err != nil {
-		return err
-	}
-	if err := s.podRepo.Delete(pod.Id); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (s *ClusterService) updateMetadata(cluster *entities.Cluster, build *entities.ClusterBuild) error {
-	now := time.Now()
-	imageTag := build.ImageTag
-	version := build.Version
-
-	cluster.CurrentImageTag = &imageTag
-	cluster.CurrentVersion = &version
-	cluster.LastDeployedAt = &now
-
-	if err := s.repo.UpdateLatestVersion(cluster); err != nil {
-		return err
-	}
-
-	build.DeployedAt = &now
-	if err := s.buildRepo.Update(build); err != nil {
-		return err
-	}
-	return nil
 }
 
 func (s *ClusterService) updateBuildConfig(cfg *entities.ClusterBuildConfig) error {

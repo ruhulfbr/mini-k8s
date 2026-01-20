@@ -24,7 +24,7 @@ func NewGitService() *GitService {
 	return &GitService{dockerConfig: config.GetDockerConfig()}
 }
 
-// ValidateRepoAndBranch checks if repo URL is valid and branch exists
+// ValidateRepoAndBranch checks if clusterRepo URL is valid and branch exists
 func (gs *GitService) ValidateRepoAndBranch(repoURL, branch string) error {
 	remote := git.NewRemote(memory.NewStorage(), &gitConfig.RemoteConfig{
 		Name: "origin",
@@ -47,7 +47,7 @@ func (gs *GitService) ValidateRepoAndBranch(repoURL, branch string) error {
 	return appErrors.GitBranchNotExist
 }
 
-// CloneApplication clones repo into clusters/<appName>
+// CloneApplication clones clusterRepo into clusters/<appName>
 func (gs *GitService) CloneApplication(appName string, clusterName string, repoURL string, branch string) error {
 	repoPath := gs.repoPath(appName, clusterName)
 	ctx := context.Background()
@@ -103,7 +103,7 @@ func (gs *GitService) PullApplication(appName string, clusterName string, buildC
 
 	repo, err := git.PlainOpen(repoPath)
 	if err != nil {
-		logger.Error(ctx, "Failed to open repo", err,
+		logger.Error(ctx, "Failed to open clusterRepo", err,
 			"application", appName,
 			"cluster", clusterName,
 			"repository", repoPath,

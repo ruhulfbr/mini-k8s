@@ -1,16 +1,14 @@
 package server
 
 import (
-	"github.com/ruhulfbr/mini-k8s/internal/config"
-	"github.com/ruhulfbr/mini-k8s/internal/infrastructure/database"
-	"github.com/ruhulfbr/mini-k8s/internal/repositories"
+	"github.com/hibiken/asynq"
+	"github.com/jmoiron/sqlx"
+	"github.com/ruhulfbr/mini-k8s/internal/loadBalancer"
 	"github.com/ruhulfbr/mini-k8s/internal/worker"
 )
 
-func startWorker(
-	cfg *config.Config,
-	ds *database.Database,
+func StartWorker(
+	DB *sqlx.DB, asynqClient *asynq.Client, lb *loadBalancer.LoadBalancer,
 ) {
-	podRepository := repositories.NewPodRepository(ds.DB)
-	worker.NewWorker(cfg, podRepository).StartWorker()
+	worker.NewWorker(DB, asynqClient, lb).StartWorker()
 }
