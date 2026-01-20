@@ -33,7 +33,7 @@ func (w *Worker) StartWorker() {
 
 	mux := asynq.NewServeMux()
 	mux.Handle(tasks.BuildDockerImage, w.HandleBuildDockerImage())
-	//mux.Handle(tasks.PullDockerImage, w.HandleDeploy())
+	mux.Handle(tasks.PullDockerImage, w.HandlePullDockerImage())
 	//
 	//mux.Handle("deploy", w.HandleDeploy())
 	//mux.Handle("terminate", w.HandleTerminate())
@@ -50,6 +50,17 @@ func (w *Worker) HandleBuildDockerImage() asynq.HandlerFunc {
 		err := w.services.ClusterService.BuildDockerImage(ctx, t)
 		if err != nil {
 			logger.Error(ctx, "[Worker] build docker image error: %v", err)
+			return err
+		}
+		return nil
+	}
+}
+
+func (w *Worker) HandlePullDockerImage() asynq.HandlerFunc {
+	return func(ctx context.Context, t *asynq.Task) error {
+		err := w.services.ClusterService.PullDockerImage(ctx, t)
+		if err != nil {
+			logger.Error(ctx, "[Worker] Pull docker image error: %v", err)
 			return err
 		}
 		return nil

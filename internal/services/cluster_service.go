@@ -205,7 +205,7 @@ func (s *ClusterService) BuildDockerImage(appId int64, clusterId int64, version 
 	}
 
 	ctx := context.Background()
-	task := tasks.NewBuildDockerTaskTask(&tasks.BuildDockerImagePayload{
+	task := tasks.BuildDockerImageTask(&tasks.BuildDockerImagePayload{
 		ApplicationId:   appId,
 		ApplicationName: application.Name,
 		ClusterId:       cluster.Id,
@@ -222,68 +222,48 @@ func (s *ClusterService) BuildDockerImage(appId int64, clusterId int64, version 
 		return appErrors.SomethingWentWrong
 	}
 
-	//if err := s.gitService.PullApplication(application.Name, cluster.Name, buildConfig); err != nil {
-	//	return nil, err
-	//}
-
-	//imageTag, err := s.dockerService.BuildImage(buildConfig, application.Name, cluster.Name)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
-	//clusterBuild := &entities.ClusterBuild{
-	//	ClusterId: cluster.Id,
-	//	Version:   version,
-	//	ImageTag:  imageTag,
-	//}
-	//
-	//if err := s.buildRepo.Create(clusterBuild); err != nil {
-	//	return nil, err
-	//}
-	//return clusterBuild, nil
-
 	return nil
 }
 
-func (s *ClusterService) PullDockerImage(appId int64, clusterId int64, version string) (*entities.ClusterBuild, error) {
+func (s *ClusterService) PullDockerImage(appId int64, clusterId int64, version string) error {
 	if err := validateVersionText(version); err != nil {
-		return nil, err
+		return err
 	}
 
 	application, err := s.applicationRepo.GetByID(appId)
 	if err != nil || application == nil {
-		return nil, appErrors.NoApplicationFound
+		return appErrors.NoApplicationFound
 	}
 
 	cluster, err := s.clusterRepo.GetByAppAndId(appId, clusterId)
 	if err != nil || cluster == nil {
-		return nil, appErrors.NoClusterFound
+		return appErrors.NoClusterFound
 	}
 
 	if cluster.DeployMode != entities.DeployModeImage {
-		return nil, appErrors.InvalidDeployMode
+		return appErrors.InvalidDeployMode
 	}
 
 	if s.buildRepo.ExistsByVersion(clusterId, version) {
-		return nil, appErrors.DuplicateBuildVersion
+		return appErrors.DuplicateBuildVersion
 	}
 
-	newImageTag, err := s.dockerService.PullImageWithTag(application.Name, cluster)
-	if err != nil {
-		return nil, err
+	ctx := context.Background()
+	task := tasks.PullDockerImageTask(&tasks.PullDockerImagePayload{
+		ApplicationName: application.Name,
+		Cluster:         *cluster,
+		Version:         version,
+	})
+	if _, err := s.asynqClient.EnqueueContext(ctx, task); err != nil {
+		logger.Error(ctx, "Enqueue pull docker image task error", err,
+			"ApplicationId", appId,
+			"ClusterId", clusterId,
+			"Version", version,
+		)
+		return appErrors.SomethingWentWrong
 	}
 
-	clusterBuild := &entities.ClusterBuild{
-		ClusterId: cluster.Id,
-		Version:   version,
-		ImageTag:  newImageTag,
-	}
-
-	if err := s.buildRepo.Create(clusterBuild); err != nil {
-		return nil, err
-	}
-
-	return clusterBuild, nil
+	return nil
 }
 
 func (s *ClusterService) Deploy(clusterId int64) error {

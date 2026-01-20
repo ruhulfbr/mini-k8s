@@ -61,9 +61,9 @@ func (s *ClusterService) Delete(appId int64, id int64) error {
 	return s.clusterRepo.Delete(id)
 }
 
-func (s *ClusterService) BuildDockerImage(ctx context.Context, t *asynq.Task) error {
+func (s *ClusterService) BuildDockerImage(ctx context.Context, task *asynq.Task) error {
 	var payload tasks.BuildDockerImagePayload
-	if err := json.Unmarshal(t.Payload(), &payload); err != nil {
+	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
 		return err
 	}
 
@@ -82,52 +82,27 @@ func (s *ClusterService) BuildDockerImage(ctx context.Context, t *asynq.Task) er
 		ImageTag:  imageTag,
 	}
 
-	if err := s.buildRepo.Create(clusterBuild); err != nil {
+	return s.buildRepo.Create(clusterBuild)
+}
+
+func (s *ClusterService) PullDockerImage(ctx context.Context, task *asynq.Task) error {
+	var payload tasks.PullDockerImagePayload
+	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
 		return err
 	}
 
-	return nil
-}
-
-func (s *ClusterService) PullDockerImage(appId int64, clusterId int64, version string) (*entities.ClusterBuild, error) {
-	if err := validateVersionText(version); err != nil {
-		return nil, err
-	}
-
-	application, err := s.applicationRepo.GetByID(appId)
-	if err != nil || application == nil {
-		return nil, appErrors.NoApplicationFound
-	}
-
-	cluster, err := s.clusterRepo.GetByAppAndId(appId, clusterId)
-	if err != nil || cluster == nil {
-		return nil, appErrors.NoClusterFound
-	}
-
-	if cluster.DeployMode != entities.DeployModeImage {
-		return nil, appErrors.InvalidDeployMode
-	}
-
-	if s.buildRepo.ExistsByVersion(clusterId, version) {
-		return nil, appErrors.DuplicateBuildVersion
-	}
-
-	newImageTag, err := s.dockerService.PullImageWithTag(application.Name, cluster)
+	newImageTag, err := s.dockerService.PullImageWithTag(payload.ApplicationName, &payload.Cluster)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	clusterBuild := &entities.ClusterBuild{
-		ClusterId: cluster.Id,
-		Version:   version,
+		ClusterId: payload.Cluster.Id,
+		Version:   payload.Version,
 		ImageTag:  newImageTag,
 	}
 
-	if err := s.buildRepo.Create(clusterBuild); err != nil {
-		return nil, err
-	}
-
-	return clusterBuild, nil
+	return s.buildRepo.Create(clusterBuild)
 }
 
 func (s *ClusterService) Deploy(clusterId int64) error {
