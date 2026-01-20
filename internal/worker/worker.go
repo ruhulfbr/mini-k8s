@@ -7,7 +7,6 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/jmoiron/sqlx"
 	"github.com/ruhulfbr/mini-k8s/internal/config"
-	"github.com/ruhulfbr/mini-k8s/internal/loadBalancer"
 	"github.com/ruhulfbr/mini-k8s/internal/tasks"
 	"github.com/ruhulfbr/mini-k8s/internal/worker/workerHandlers"
 	"github.com/ruhulfbr/mini-k8s/internal/worker/workerServices"
@@ -18,8 +17,8 @@ type Worker struct {
 	redisConfig config.RedisConfig
 }
 
-func NewWorker(DB *sqlx.DB, asynqClient *asynq.Client, lb *loadBalancer.LoadBalancer) *Worker {
-	services := workerServices.InitWorkerServices(DB, asynqClient, lb)
+func NewWorker(DB *sqlx.DB, asynqClient *asynq.Client) *Worker {
+	services := workerServices.InitWorkerServices(DB, asynqClient)
 
 	return &Worker{
 		handlers:    *workerHandlers.InitWorkerHandlers(services),
