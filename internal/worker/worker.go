@@ -34,9 +34,10 @@ func (w *Worker) StartWorker() {
 	mux := asynq.NewServeMux()
 	mux.Handle(tasks.BuildDockerImage, w.HandleBuildDockerImage())
 	mux.Handle(tasks.PullDockerImage, w.HandlePullDockerImage())
-	//
-	//mux.Handle("deploy", w.HandleDeploy())
-	//mux.Handle("terminate", w.HandleTerminate())
+	mux.Handle(tasks.DeployCluster, w.HandleDeployCluster())
+	mux.Handle(tasks.RollingDeployCluster, w.HandleRollingDeployCluster())
+	mux.Handle(tasks.ScaleCluster, w.HandleScaleCluster())
+	mux.Handle(tasks.DeleteCluster, w.HandleDeleteCluster())
 
 	log.Println("[Worker] starting...")
 
@@ -61,6 +62,50 @@ func (w *Worker) HandlePullDockerImage() asynq.HandlerFunc {
 		err := w.services.ClusterService.PullDockerImage(ctx, t)
 		if err != nil {
 			logger.Error(ctx, "[Worker] Pull docker image error: %v", err)
+			return err
+		}
+		return nil
+	}
+}
+
+func (w *Worker) HandleDeployCluster() asynq.HandlerFunc {
+	return func(ctx context.Context, t *asynq.Task) error {
+		err := w.services.ClusterService.Deploy(ctx, t)
+		if err != nil {
+			logger.Error(ctx, "[Worker] Deploy Cluster error: %v", err)
+			return err
+		}
+		return nil
+	}
+}
+
+func (w *Worker) HandleRollingDeployCluster() asynq.HandlerFunc {
+	return func(ctx context.Context, t *asynq.Task) error {
+		err := w.services.ClusterService.RollingDeploy(ctx, t)
+		if err != nil {
+			logger.Error(ctx, "[Worker] Rolling Deploy Cluster error: %v", err)
+			return err
+		}
+		return nil
+	}
+}
+
+func (w *Worker) HandleScaleCluster() asynq.HandlerFunc {
+	return func(ctx context.Context, t *asynq.Task) error {
+		err := w.services.ClusterService.HandleScale(ctx, t)
+		if err != nil {
+			logger.Error(ctx, "[Worker] Cluster scaling error: %v", err)
+			return err
+		}
+		return nil
+	}
+}
+
+func (w *Worker) HandleDeleteCluster() asynq.HandlerFunc {
+	return func(ctx context.Context, t *asynq.Task) error {
+		err := w.services.ClusterService.Delete(ctx, t)
+		if err != nil {
+			logger.Error(ctx, "[Worker] Delete Cluster error: %v", err)
 			return err
 		}
 		return nil

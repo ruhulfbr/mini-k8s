@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"net/http"
 	"strconv"
 
 	"github.com/labstack/echo/v4"
@@ -179,7 +178,7 @@ func (h *ClusterHandler) Deploy(c echo.Context) error {
 		return err
 	}
 
-	return responses.Success(c, http.StatusOK, "Successfully deployed")
+	return responses.OK(c, nil)
 }
 
 func (h *ClusterHandler) RollingDeploy(c echo.Context) error {
@@ -190,7 +189,7 @@ func (h *ClusterHandler) RollingDeploy(c echo.Context) error {
 		return err
 	}
 
-	return responses.Success(c, http.StatusOK, "Successfully deployed")
+	return responses.OK(c, nil)
 }
 
 func (h *ClusterHandler) HandleScale(c echo.Context) error {
@@ -209,5 +208,5 @@ func (h *ClusterHandler) HandleScale(c echo.Context) error {
 		return err
 	}
 
-	return responses.Success(c, http.StatusOK, "Successfully scaled")
+	return responses.OK(c, nil)
 }

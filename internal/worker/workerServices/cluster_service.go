@@ -3,11 +3,9 @@ package workerServices
 import (
 	"context"
 	"encoding/json"
-	"regexp"
 	"time"
 
 	"github.com/hibiken/asynq"
-	"github.com/ruhulfbr/mini-k8s/internal/appErrors"
 	"github.com/ruhulfbr/mini-k8s/internal/entities"
 	"github.com/ruhulfbr/mini-k8s/internal/infrastructure/logger"
 	"github.com/ruhulfbr/mini-k8s/internal/repositories"
@@ -45,11 +43,11 @@ func NewClusterService(
 	}
 }
 
-func (s *ClusterService) Delete(appId int64, id int64) error {
-	//_, err := s.GetByID(appId, id)
-	//if err != nil {
-	//	return err
-	//}
+func (s *ClusterService) Delete(ctx context.Context, task *asynq.Task) error {
+	var payload tasks.DeleteClusterPayload
+	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
+		return err
+	}
 
 	// Delete build Config
 	// Delete build History
@@ -58,7 +56,7 @@ func (s *ClusterService) Delete(appId int64, id int64) error {
 	// Deleted Containers
 	// Stop load balancer
 
-	return s.clusterRepo.Delete(id)
+	return s.clusterRepo.Delete(payload.ClusterId)
 }
 
 func (s *ClusterService) BuildDockerImage(ctx context.Context, task *asynq.Task) error {
@@ -105,11 +103,15 @@ func (s *ClusterService) PullDockerImage(ctx context.Context, task *asynq.Task) 
 	return s.buildRepo.Create(clusterBuild)
 }
 
-func (s *ClusterService) Deploy(clusterId int64) error {
-	cluster, build, err := s.fetchClusterAndBuild(clusterId)
-	if err != nil {
+func (s *ClusterService) Deploy(ctx context.Context, task *asynq.Task) error {
+	var payload tasks.DeployClusterPayload
+	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
 		return err
 	}
+
+	cluster := &payload.Cluster
+	clusterId := cluster.Id
+	build := &payload.ClusterBuild
 
 	existingPods, err := s.podRepo.GetByClusterId(clusterId)
 	if err != nil {
@@ -132,11 +134,14 @@ func (s *ClusterService) Deploy(clusterId int64) error {
 	return s.updateMetadata(cluster, build)
 }
 
-func (s *ClusterService) RollingDeploy(clusterId int64) error {
-	cluster, build, err := s.fetchClusterAndBuild(clusterId)
-	if err != nil {
+func (s *ClusterService) RollingDeploy(ctx context.Context, task *asynq.Task) error {
+	var payload tasks.RollingDeployClusterPayload
+	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
 		return err
 	}
+
+	cluster := &payload.Cluster
+	build := &payload.ClusterBuild
 
 	if err := s.rollingUpdate(cluster, build); err != nil {
 		return err
@@ -145,19 +150,22 @@ func (s *ClusterService) RollingDeploy(clusterId int64) error {
 	return s.updateMetadata(cluster, build)
 }
 
-func (s *ClusterService) HandleScale(clusterId int64, replicas int) error {
-	cluster, build, err := s.fetchClusterAndBuild(clusterId)
-	if err != nil {
+func (s *ClusterService) HandleScale(ctx context.Context, task *asynq.Task) error {
+	var payload tasks.ScaleClusterPayload
+	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
 		return err
 	}
 
-	currentPods, err := s.podRepo.GetByClusterId(clusterId)
+	cluster := &payload.Cluster
+	build := &payload.ClusterBuild
+	desiredReplicas := payload.Replicas
+
+	currentPods, err := s.podRepo.GetByClusterId(cluster.Id)
 	if err != nil {
 		return err
 	}
 
 	currentReplicas := len(currentPods)
-	desiredReplicas := replicas
 	delta := desiredReplicas - currentReplicas
 
 	switch {
@@ -166,34 +174,19 @@ func (s *ClusterService) HandleScale(clusterId int64, replicas int) error {
 			return err
 		}
 	case delta < 0:
-		if err := s.scaleDown(clusterId, -delta); err != nil {
+		if err := s.scaleDown(cluster.Id, -delta); err != nil {
 			return err
 		}
 	default:
 		return nil
 	}
 
-	cluster.Replicas = replicas
+	cluster.Replicas = desiredReplicas
 
 	return s.clusterRepo.Update(cluster)
 }
 
 // ---------------------- Private Methods ------------------------------
-
-func (s *ClusterService) fetchClusterAndBuild(clusterId int64) (*entities.Cluster, *entities.ClusterBuild, error) {
-	cluster, err := s.clusterRepo.GetById(clusterId)
-	if err != nil || cluster == nil {
-		return nil, nil, appErrors.NoClusterFound
-	}
-
-	build, err := s.buildRepo.GetLatestBuild(clusterId)
-	if err != nil {
-		return nil, nil, appErrors.ClusterBuildInfoNotFound
-	}
-
-	return cluster, build, nil
-}
-
 func (s *ClusterService) recreateUpdate(cluster *entities.Cluster, build *entities.ClusterBuild, pods []entities.Pod) error {
 	if err := s.terminateAllPods(pods); err != nil {
 		return err
@@ -302,27 +295,5 @@ func (s *ClusterService) updateMetadata(cluster *entities.Cluster, build *entiti
 	if err := s.buildRepo.Update(build); err != nil {
 		return err
 	}
-	return nil
-}
-
-func (s *ClusterService) updateBuildConfig(cfg *entities.ClusterBuildConfig) error {
-	exist, err := s.buildConfigRepo.GetByClusterId(cfg.ClusterId)
-
-	if err != nil || exist == nil {
-		return s.buildConfigRepo.Create(cfg)
-	}
-
-	return s.buildConfigRepo.Update(cfg)
-}
-
-func validateVersionText(version string) error {
-	var versionRegex = regexp.MustCompile(
-		`^v(0|[1-9]\d*)\.\d{2}\.\d{2}$`,
-	)
-
-	if !versionRegex.MatchString(version) {
-		return appErrors.InvalidVersionText
-	}
-
 	return nil
 }

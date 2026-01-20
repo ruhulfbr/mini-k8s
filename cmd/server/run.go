@@ -48,7 +48,7 @@ func Run() error {
 	go StartWorker(ds.DB, asynqClient, lb)
 
 	// Initialize HTTP API server
-	app, err := InitServer(ds, asynqClient, lb)
+	app, err := InitServer(ds, asynqClient)
 	if err != nil {
 		return err
 	}

@@ -9,16 +9,14 @@ import (
 	"github.com/ruhulfbr/mini-k8s/internal/http/middleware"
 	"github.com/ruhulfbr/mini-k8s/internal/infrastructure/database"
 	"github.com/ruhulfbr/mini-k8s/internal/infrastructure/logger/slog"
-	"github.com/ruhulfbr/mini-k8s/internal/loadBalancer"
 )
 
 func ConfigureRoutes(
 	engine *echo.Echo,
 	ds *database.Database,
 	asynqClient *asynq.Client,
-	lb *loadBalancer.LoadBalancer,
 ) {
-	appHandlers := handlers.InitHandlers(ds, asynqClient, lb)
+	appHandlers := handlers.InitHandlers(ds, asynqClient)
 
 	engine.HTTPErrorHandler = middleware.NewEchoHTTPErrorHandler()
 
@@ -55,7 +53,4 @@ func ConfigureRoutes(
 	//pods.GET("", appHandlers.PodHandler.ListByCluster)
 	//pods.POST("", appHandlers.PodHandler.Create)
 	//pods.DELETE("/:id", appHandlers.PodHandler.Delete)
-
-	api.POST("/deploy-old", appHandlers.NodeHandler.HandleDeploy)
-	api.POST("/scale", appHandlers.NodeHandler.HandleScale)
 }
