@@ -143,12 +143,12 @@ func (h *ClusterHandler) BuildImage(c echo.Context) error {
 		return err
 	}
 
-	service, err := h.service.BuildDockerImage(appId, id, req.Version)
+	err := h.service.BuildDockerImage(appId, id, req.Version)
 	if err != nil {
 		return err
 	}
 
-	return responses.OK(c, service)
+	return responses.OK(c, nil)
 }
 
 func (h *ClusterHandler) PullImage(c echo.Context) error {

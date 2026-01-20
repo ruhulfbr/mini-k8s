@@ -15,16 +15,6 @@ var (
 		Message: "Dockerfile file not found",
 	}
 
-	DockerDuplicateImageTag = &AppError{
-		Code:    http.StatusBadRequest,
-		Message: "Docker image tag already exists",
-	}
-
-	DockerDuplicateVersion = &AppError{
-		Code:    http.StatusBadRequest,
-		Message: "Docker build version already exists",
-	}
-
 	DockerFailedToBuildImage = &AppError{
 		Code:    http.StatusBadRequest,
 		Message: "Failed to build Docker image",

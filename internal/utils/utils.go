@@ -1,20 +1,22 @@
 package utils
 
 import (
-	"crypto/sha1"
-	"encoding/base64"
+	"crypto/sha256"
+	"encoding/base32"
 	"encoding/json"
+	"strings"
 
 	"github.com/google/uuid"
 )
 
 func UniqueId() string {
-	uuId, _ := uuid.NewV7()
+	id, _ := uuid.NewV7()
+	sum := sha256.Sum256([]byte(id.String()))
 
-	u := uuId.String()
-	hash := sha1.Sum([]byte(u))
-
-	return base64.RawURLEncoding.EncodeToString(hash[:])[:8]
+	return strings.ToLower(
+		base32.StdEncoding.WithPadding(base32.NoPadding).
+			EncodeToString(sum[:])[:10],
+	)
 }
 
 func JsonEncode(v any) ([]byte, error) {

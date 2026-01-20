@@ -33,6 +33,16 @@ var (
 		Message: "Invalid version format. Expected vMAJOR.MM.PP (e.g. v1.10.00)",
 	}
 
+	DuplicateImageTag = &AppError{
+		Code:    http.StatusBadRequest,
+		Message: "Docker image tag already exists",
+	}
+
+	DuplicateBuildVersion = &AppError{
+		Code:    http.StatusBadRequest,
+		Message: "Docker build version already exists",
+	}
+
 	UnableToScaleDown = &AppError{
 		Code:    http.StatusBadRequest,
 		Message: "Unable to scale down, minimum one pod must be scaled down",

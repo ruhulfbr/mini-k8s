@@ -30,7 +30,7 @@ func InitServices(
 			repos.ApplicationRepository,
 			repos.ClusterBuildRepository,
 			repos.PodRepository,
-			gitService, dockerService,
+			gitService, dockerService, asynqClient,
 		),
 		GitService:  gitService,
 		NodeService: NewNodeService(repos.PodRepository, asynqClient, lb),

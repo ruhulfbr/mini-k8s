@@ -25,7 +25,7 @@ func NewNodeService(
 }
 
 func (s *NodeService) CreateNode(ctx context.Context, req requests.ScaleRequest) error {
-	//pods, err := s.repo.ListPodsByService(ctx, req.ServiceName)
+	//pods, err := s.clusterRepo.ListPodsByService(ctx, req.ServiceName)
 	//if err != nil {
 	//	return err
 	//}
@@ -45,7 +45,7 @@ func (s *NodeService) CreateNode(ctx context.Context, req requests.ScaleRequest)
 }
 
 func (s *NodeService) Scale(ctx context.Context, req requests.ScaleRequest) error {
-	//currentPods, err := s.repo.ListPodsByService(ctx, req.ServiceName)
+	//currentPods, err := s.clusterRepo.ListPodsByService(ctx, req.ServiceName)
 	//if err != nil {
 	//	return err
 	//}
@@ -77,7 +77,7 @@ func (s *NodeService) scaleUp(ctx context.Context, req requests.ScaleRequest, co
 	//		continue
 	//	}
 	//
-	//	_ = s.repo.PutPod(ctx, pod)
+	//	_ = s.clusterRepo.PutPod(ctx, pod)
 	//}
 	return nil
 }
