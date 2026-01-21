@@ -16,6 +16,7 @@ import (
 type ClusterService struct {
 	clusterRepo   *repositories.ClusterRepository
 	buildRepo     *repositories.ClusterBuildRepository
+	eventRepo     *repositories.ClusterEventRepository
 	podRepo       *repositories.PodRepository
 	gitService    *services.GitService
 	dockerService *services.DockerService
@@ -24,6 +25,7 @@ type ClusterService struct {
 func NewClusterService(
 	clusterRepo *repositories.ClusterRepository,
 	buildRepo *repositories.ClusterBuildRepository,
+	eventRepo *repositories.ClusterEventRepository,
 	podRepo *repositories.PodRepository,
 	gitService *services.GitService,
 	dockerService *services.DockerService,
@@ -31,6 +33,7 @@ func NewClusterService(
 	return &ClusterService{
 		clusterRepo:   clusterRepo,
 		buildRepo:     buildRepo,
+		eventRepo:     eventRepo,
 		podRepo:       podRepo,
 		gitService:    gitService,
 		dockerService: dockerService,
@@ -291,4 +294,24 @@ func (s *ClusterService) updateMetadata(cluster *entities.Cluster, build *entiti
 		return err
 	}
 	return nil
+}
+
+func (s *ClusterService) logEvent(ctx context.Context, clusterId int64, eventType entities.ClusterEventType, metadata any, podId *int64) {
+	metaJSON := ""
+	if metadata != nil {
+		if b, err := json.Marshal(metadata); err != nil {
+			metaJSON = `{"error":"metadata marshal failed"}`
+		} else {
+			metaJSON = string(b)
+		}
+	}
+
+	if err := s.eventRepo.LogEvent(&entities.ClusterEvent{
+		ClusterId: clusterId,
+		Type:      eventType,
+		PodId:     podId,
+		Metadata:  metaJSON,
+	}); err != nil {
+		logger.Error(ctx, "Failed to store cluster event", err, "clusterId", clusterId, "eventType", eventType)
+	}
 }

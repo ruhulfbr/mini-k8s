@@ -23,6 +23,7 @@ func InitWorkerServices(DB *sqlx.DB, asynqClient *asynq.Client) *Services {
 		ClusterService: NewClusterService(
 			repos.ClusterRepository,
 			repos.ClusterBuildRepository,
+			repos.ClusterEventRepository,
 			repos.PodRepository,
 			gitService, dockerService,
 		),

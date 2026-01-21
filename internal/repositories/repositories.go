@@ -10,6 +10,7 @@ type Repositories struct {
 	ClusterBuildConfigRepository *ClusterBuildConfigRepository
 	ClusterBuildRepository       *ClusterBuildRepository
 	PodRepository                *PodRepository
+	ClusterEventRepository       *ClusterEventRepository
 }
 
 func InitRepositories(DB *sqlx.DB) *Repositories {
@@ -19,5 +20,6 @@ func InitRepositories(DB *sqlx.DB) *Repositories {
 		ClusterBuildConfigRepository: NewClusterBuildConfigRepository(DB),
 		ClusterBuildRepository:       NewClusterBuildRepository(DB),
 		PodRepository:                NewPodRepository(DB),
+		ClusterEventRepository:       NewClusterEventRepository(DB),
 	}
 }

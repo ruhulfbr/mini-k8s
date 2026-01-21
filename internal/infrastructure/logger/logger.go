@@ -22,27 +22,27 @@ func normalizeContext(v any) context.Context {
 // log helpers
 // --------------------
 
-func Info(v any, msg string, attrs ...any) {
+func Info(v any, msg string, args ...any) {
 	ctx := normalizeContext(v)
-	slog.Log(ctx, slog.LevelInfo, msg, attrs...)
+	slog.InfoContext(ctx, msg, "args", args)
 }
 
-func Warn(v any, msg string, attrs ...any) {
+func Warn(v any, msg string, args ...any) {
 	ctx := normalizeContext(v)
-	slog.Log(ctx, slog.LevelWarn, msg, attrs...)
+	slog.WarnContext(ctx, msg, "args", args)
 }
 
-func Debug(v any, msg string, attrs ...any) {
+func Debug(v any, msg string, args ...any) {
 	ctx := normalizeContext(v)
-	slog.Log(ctx, slog.LevelDebug, msg, attrs...)
+	slog.DebugContext(ctx, msg, "args", args)
 }
 
-func Error(v any, msg string, err error, attrs ...any) {
+func Error(v any, msg string, err error, args ...any) {
 	ctx := normalizeContext(v)
 
 	if err != nil {
-		attrs = append(attrs, slog.Any("error", err))
+		args = append(args, slog.Any("error", err))
 	}
 
-	slog.Log(ctx, slog.LevelError, msg, attrs...)
+	slog.ErrorContext(ctx, msg, "args", args)
 }
