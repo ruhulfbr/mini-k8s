@@ -41,11 +41,8 @@ func Run() error {
 	})
 	defer asynqClient.Close()
 
-	// Initialize and start load balancer (is a long-running component)
-	lb := InitLoadBalancer(ds)
-
 	// Start background worker (Asynq consumer). Runs independently of the HTTP server
-	go StartWorker(ds.DB, asynqClient, lb)
+	go StartWorker(ds.DB, asynqClient)
 
 	// Initialize HTTP API server
 	app, err := InitServer(ds, asynqClient)

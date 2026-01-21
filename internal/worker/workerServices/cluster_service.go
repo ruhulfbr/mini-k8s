@@ -14,32 +14,26 @@ import (
 )
 
 type ClusterService struct {
-	clusterRepo     *repositories.ClusterRepository
-	applicationRepo *repositories.ApplicationRepository
-	buildConfigRepo *repositories.ClusterBuildConfigRepository
-	buildRepo       *repositories.ClusterBuildRepository
-	podRepo         *repositories.PodRepository
-	gitService      *services.GitService
-	dockerService   *services.DockerService
+	clusterRepo   *repositories.ClusterRepository
+	buildRepo     *repositories.ClusterBuildRepository
+	podRepo       *repositories.PodRepository
+	gitService    *services.GitService
+	dockerService *services.DockerService
 }
 
 func NewClusterService(
 	clusterRepo *repositories.ClusterRepository,
-	buildConfigRepo *repositories.ClusterBuildConfigRepository,
-	applicationRepo *repositories.ApplicationRepository,
 	buildRepo *repositories.ClusterBuildRepository,
 	podRepo *repositories.PodRepository,
 	gitService *services.GitService,
 	dockerService *services.DockerService,
 ) *ClusterService {
 	return &ClusterService{
-		clusterRepo:     clusterRepo,
-		buildConfigRepo: buildConfigRepo,
-		applicationRepo: applicationRepo,
-		buildRepo:       buildRepo,
-		podRepo:         podRepo,
-		gitService:      gitService,
-		dockerService:   dockerService,
+		clusterRepo:   clusterRepo,
+		buildRepo:     buildRepo,
+		podRepo:       podRepo,
+		gitService:    gitService,
+		dockerService: dockerService,
 	}
 }
 
@@ -258,6 +252,7 @@ func (s *ClusterService) createPod(cluster *entities.Cluster, build *entities.Cl
 		ContainerId:   info.ContainerID,
 		ContainerName: info.ContainerName,
 		IpAddress:     info.IP,
+		Status:        entities.PodStatusPending,
 	}
 
 	if err := s.podRepo.Create(pod); err != nil {

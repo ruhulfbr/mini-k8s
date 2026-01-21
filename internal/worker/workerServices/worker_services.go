@@ -3,7 +3,6 @@ package workerServices
 import (
 	"github.com/hibiken/asynq"
 	"github.com/jmoiron/sqlx"
-	"github.com/ruhulfbr/mini-k8s/internal/loadBalancer"
 	"github.com/ruhulfbr/mini-k8s/internal/repositories"
 	"github.com/ruhulfbr/mini-k8s/internal/services"
 )
@@ -14,7 +13,7 @@ type Services struct {
 	DockerService  *services.DockerService
 }
 
-func InitWorkerServices(DB *sqlx.DB, asynqClient *asynq.Client, lb *loadBalancer.LoadBalancer) *Services {
+func InitWorkerServices(DB *sqlx.DB, asynqClient *asynq.Client) *Services {
 	repos := repositories.InitRepositories(DB)
 
 	gitService := services.NewGitService()
@@ -23,8 +22,6 @@ func InitWorkerServices(DB *sqlx.DB, asynqClient *asynq.Client, lb *loadBalancer
 	return &Services{
 		ClusterService: NewClusterService(
 			repos.ClusterRepository,
-			repos.ClusterBuildConfigRepository,
-			repos.ApplicationRepository,
 			repos.ClusterBuildRepository,
 			repos.PodRepository,
 			gitService, dockerService,
