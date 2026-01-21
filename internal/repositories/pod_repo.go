@@ -47,16 +47,40 @@ func (r *PodRepository) GetById(id int64) (*entities.Pod, error) {
 	return &pod, err
 }
 
-func (r *PodRepository) Create(p *entities.Pod) error {
+func (r *PodRepository) Create(pod *entities.Pod) error {
 	return r.db.QueryRow(`
-		INSERT INTO pods (cluster_id, container_name, container_id, ip_address)
-		VALUES (?, ?, ?, ?)
-		RETURNING id, created_at`,
-		p.ClusterId,
-		p.ContainerName,
-		p.ContainerId,
-		p.IpAddress,
-	).Scan(&p.Id, &p.CreatedAt)
+		INSERT INTO pods (cluster_id, container_name, container_id, ip_address, status)
+		VALUES (?, ?, ?, ?, ?)
+		RETURNING id, status, created_at`,
+		pod.ClusterId,
+		pod.ContainerName,
+		pod.ContainerId,
+		pod.IpAddress,
+		pod.Status,
+	).Scan(&pod.Id, &pod.Status, &pod.CreatedAt)
+}
+
+func (r *PodRepository) Update(pod *entities.Pod) error {
+	res, err := r.db.NamedExec(`
+		UPDATE pods SET
+			cluster_id     = :cluster_id,
+			container_name = :container_name,
+			container_id   = :container_id,
+			ip_address     = :ip_address,
+			status         = :status
+		WHERE id = :id
+	`, pod)
+
+	if err != nil {
+		return err
+	}
+
+	_, err = res.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (r *PodRepository) Delete(id int64) error {

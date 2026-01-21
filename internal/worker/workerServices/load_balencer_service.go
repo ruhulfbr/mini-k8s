@@ -16,129 +16,132 @@ import (
 )
 
 type LoadBalancer struct {
+	mu       sync.RWMutex
+	clusters map[int64]*clusterState
+}
+
+type clusterState struct {
+	clusterId int64
+	port      int
+	server    *http.Server
+
 	counter uint64
-	mu      sync.Mutex
-	servers map[string]*http.Server
+	pods    map[int64]*entities.Pod // podId → pod
 }
 
 func NewLoadBalancer() *LoadBalancer {
 	return &LoadBalancer{
-		servers: make(map[string]*http.Server),
+		clusters: make(map[int64]*clusterState),
 	}
 }
 
-///*
-//Start bootstraps load balancers for all existing services.
-//This is useful on controller restart.
-//*/
-//func (lb *LoadBalancer) Start() {
-//	services, err := lb.podRepo.ListPodsGroupedByService(context.Background())
-//	if err != nil || len(services) == 0 {
-//		log.Println("[LB] no services found to start")
-//		return
-//	}
-//
-//	for _, svc := range services {
-//		go lb.StartServiceListener(svc.Cluster, svc.Port)
-//	}
-//}
-
-/*
-StartServiceListener starts (or skips if already running)
-a load balancer for a single service.
-*/
-func (lb *LoadBalancer) StartServiceListener(service string, port int) {
+func (lb *LoadBalancer) AddPod(clusterId int64, port int, pod *entities.Pod) {
 	lb.mu.Lock()
-	if _, exists := lb.servers[service]; exists {
-		lb.mu.Unlock()
-		log.Printf("[LB] already running for service=%s", service)
+	defer lb.mu.Unlock()
+
+	state, exists := lb.clusters[clusterId]
+	if !exists {
+		state = &clusterState{
+			clusterId: clusterId,
+			port:      port,
+			pods:      make(map[int64]*entities.Pod),
+		}
+		lb.clusters[clusterId] = state
+		lb.startClusterLocked(state)
+	}
+
+	state.pods[pod.Id] = pod
+
+	log.Printf(
+		"[LB] pod added cluster=%d pod=%d (%s)",
+		clusterId, pod.Id, pod.IpAddress,
+	)
+}
+
+func (lb *LoadBalancer) RemovePod(clusterId int64, podId int64) {
+	lb.mu.Lock()
+	defer lb.mu.Unlock()
+
+	state, exists := lb.clusters[clusterId]
+	if !exists {
 		return
 	}
 
+	delete(state.pods, podId)
+
+	log.Printf(
+		"[LB] pod removed cluster=%d pod=%d",
+		clusterId, podId,
+	)
+
+	if len(state.pods) == 0 {
+		lb.stopClusterLocked(state)
+		delete(lb.clusters, clusterId)
+	}
+}
+
+func (lb *LoadBalancer) startClusterLocked(state *clusterState) {
 	server := &http.Server{
-		Addr:    fmt.Sprintf(":%d", port),
-		Handler: lb.serviceHandler(service),
+		Addr:    fmt.Sprintf(":%d", state.port),
+		Handler: lb.clusterHandler(state.clusterId),
 	}
 
-	lb.servers[service] = server
-	lb.mu.Unlock()
-
-	log.Printf("[LB] started for service=%s on port=%d", service, port)
+	state.server = server
 
 	go func() {
-		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Printf("[LB] error for service=%s: %v", service, err)
+		log.Printf(
+			"[LB] started cluster=%d port=%d",
+			state.clusterId, state.port,
+		)
+
+		if err := server.ListenAndServe(); err != nil &&
+			!errors.Is(err, http.ErrServerClosed) {
+			log.Printf(
+				"[LB] error cluster=%d: %v",
+				state.clusterId, err,
+			)
 		}
 	}()
 }
 
-/*
-StopServiceListener gracefully stops the load balancer
-for a given service.
-Call this when replicas reach 0 or service is deleted.
-*/
-func (lb *LoadBalancer) StopServiceListener(service string) {
-	lb.mu.Lock()
-	server, exists := lb.servers[service]
-	if !exists {
-		lb.mu.Unlock()
-		return
-	}
-	delete(lb.servers, service)
-	lb.mu.Unlock()
-
+func (lb *LoadBalancer) stopClusterLocked(state *clusterState) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	log.Printf("[LB] stopping service=%s", service)
-	_ = server.Shutdown(ctx)
+	log.Printf("[LB] stopping cluster=%d", state.clusterId)
+	_ = state.server.Shutdown(ctx)
 }
 
-/*
-serviceHandler routes incoming requests to running pods
-using round-robin selection.
-*/
-func (lb *LoadBalancer) serviceHandler(service string, pods []*entities.Pod) http.HandlerFunc {
+func (lb *LoadBalancer) clusterHandler(clusterId int64) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		//pods, err := lb.podRepo.ListPodsByService(context.Background(), service)
-		//if err != nil {
-		//	http.Error(w, "service unavailable", http.StatusServiceUnavailable)
-		//	return
-		//}
-
-		runningPods := lb.filterRunningPods(pods)
-		if len(runningPods) == 0 {
-			http.Error(w, "no running pods", http.StatusServiceUnavailable)
+		lb.mu.RLock()
+		state, exists := lb.clusters[clusterId]
+		if !exists || len(state.pods) == 0 {
+			lb.mu.RUnlock()
+			http.Error(w, "cluster unavailable", http.StatusServiceUnavailable)
 			return
 		}
 
-		target := lb.selectNextPod(runningPods)
-		log.Println("[LB] proxying to", target.String())
+		pods := make([]*entities.Pod, 0, len(state.pods))
+		for _, pod := range state.pods {
+			pods = append(pods, pod)
+		}
+		lb.mu.RUnlock()
 
-		httputil.NewSingleHostReverseProxy(target).ServeHTTP(w, r)
-	}
-}
+		idx := int(atomic.AddUint64(&state.counter, 1)) % len(pods)
+		target := pods[idx]
 
-/*
-filterRunningPods returns only pods in Running state.
-*/
-func (lb *LoadBalancer) filterRunningPods(pods []entities.Pod) []entities.Pod {
-	out := make([]entities.Pod, 0)
-	//for _, pod := range pods {
-	//	if pod.Status == entities.PodRunning {
-	//		out = append(out, pod)
-	//	}
-	//}
-	return out
-}
+		targetURL := &url.URL{
+			Scheme: "http",
+			Host:   target.IpAddress + ":80",
+		}
 
-/*
-selectNextPod selects a pod using round-robin strategy.
-*/
-func (lb *LoadBalancer) selectNextPod(pods []entities.Pod) *url.URL {
-	idx := int(atomic.AddUint64(&lb.counter, 1)) % len(pods)
-	return &url.URL{
-		Scheme: "http",
-		Host:   pods[idx].IpAddress + ":80",
+		log.Printf(
+			"[LB] cluster=%d -> pod=%d (%s)",
+			clusterId, target.Id, target.IpAddress,
+		)
+
+		httputil.NewSingleHostReverseProxy(targetURL).
+			ServeHTTP(w, r)
 	}
 }
