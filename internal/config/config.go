@@ -20,6 +20,7 @@ type Config struct {
 	SQLite SQLiteConfig
 	Docker DockerConfig
 	Logger LogConfig
+	Pusher PusherConfig
 }
 
 type AppConfig struct {
@@ -39,6 +40,13 @@ type RedisConfig struct {
 
 type SQLiteConfig struct {
 	DataSource string `env:"SQLITE_DATA_SOURCE" envDefault:"data/sqlite/mini-k8s.db"`
+}
+
+type PusherConfig struct {
+	AppId      string `env:"PUSHER_APP_ID"`
+	AppKey     string `env:"PUSHER_APP_KEY"`
+	AppSecret  string `env:"PUSHER_APP_SECRET"`
+	AppCluster string `env:"PUSHER_APP_CLUSTER"`
 }
 
 type DockerConfig struct {
@@ -75,6 +83,10 @@ func GetRedisConfig() RedisConfig {
 
 func GetSQLiteConfig() SQLiteConfig {
 	return cfg.SQLite
+}
+
+func GetPusherConfig() PusherConfig {
+	return cfg.Pusher
 }
 
 func GetDockerConfig() DockerConfig {
