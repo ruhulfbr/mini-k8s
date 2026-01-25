@@ -1,12 +1,15 @@
 package routes
 
 import (
+	"net/http"
+
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 	"github.com/labstack/echo/v4"
 	"github.com/ruhulfbr/mini-k8s/internal/config"
 	"github.com/ruhulfbr/mini-k8s/internal/http/handlers"
 	"github.com/ruhulfbr/mini-k8s/internal/http/middleware"
+	"github.com/ruhulfbr/mini-k8s/internal/http/web"
 	"github.com/ruhulfbr/mini-k8s/internal/infrastructure/database"
 	"github.com/ruhulfbr/mini-k8s/internal/infrastructure/logger/slog"
 )
@@ -16,6 +19,8 @@ func ConfigureRoutes(
 	ds *database.Database,
 	asynqClient *asynq.Client,
 ) {
+	engine.Renderer = web.NewRenderer()
+
 	appHandlers := handlers.InitHandlers(ds, asynqClient)
 
 	engine.HTTPErrorHandler = middleware.NewEchoHTTPErrorHandler()
@@ -24,6 +29,12 @@ func ConfigureRoutes(
 		tracer := slog.NewTraceStarter(uuid.NewV7)
 		engine.Use(middleware.NewRequestLogger(tracer))
 	}
+
+	engine.GET("/", func(c echo.Context) error {
+		return c.Render(http.StatusOK, "index.html", map[string]any{
+			"title": "Home",
+		})
+	})
 
 	api := engine.Group("/api")
 
