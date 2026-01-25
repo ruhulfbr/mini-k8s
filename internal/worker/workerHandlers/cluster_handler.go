@@ -23,7 +23,6 @@ func (ch *ClusterHandler) HandleBuildDockerImage() asynq.HandlerFunc {
 		err := ch.ClusterService.BuildDockerImage(ctx, t)
 		if err != nil {
 			logger.Error(ctx, "[Worker] build docker image error: %v", err)
-			return err
 		}
 		return nil
 	}
