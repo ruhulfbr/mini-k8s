@@ -7,16 +7,29 @@ import (
 )
 
 type ApplicationService struct {
-	repo       *repositories.ApplicationRepository
-	GitService *GitService
+	repo        *repositories.ApplicationRepository
+	clusterRepo *repositories.ClusterRepository
 }
 
-func NewApplicationService(r *repositories.ApplicationRepository, gs *GitService) *ApplicationService {
-	return &ApplicationService{repo: r, GitService: gs}
+func NewApplicationService(r *repositories.ApplicationRepository, cr *repositories.ClusterRepository) *ApplicationService {
+	return &ApplicationService{repo: r, clusterRepo: cr}
 }
 
 func (s *ApplicationService) List(name *string) ([]entities.Application, error) {
-	return s.repo.List(name)
+	apps, err := s.repo.List(name)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range apps {
+		clusters, err := s.clusterRepo.ListByApplication(apps[i].Id, nil)
+		if err != nil {
+			return nil, err
+		}
+		apps[i].Clusters = clusters
+	}
+
+	return apps, nil
 }
 
 func (s *ApplicationService) GetByID(id int64) (*entities.Application, error) {

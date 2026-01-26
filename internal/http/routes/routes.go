@@ -32,7 +32,8 @@ func ConfigureRoutes(
 
 	engine.GET("/", func(c echo.Context) error {
 		return c.Render(http.StatusOK, "index.html", map[string]any{
-			"title": "Home",
+			"title":    "Applications",
+			"pageName": "dashboard",
 		})
 	})
 

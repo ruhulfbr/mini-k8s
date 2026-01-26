@@ -1,0 +1,10 @@
+{{ define "content.dashboard" }}
+<h1>Dashboard</h1>
+<p>Welcome, {{ .UserName }}!</p>
+
+<ul>
+    {{ range .Notifications }}
+    <li>{{ . }}</li>
+    {{ end }}
+</ul>
+{{ end }}

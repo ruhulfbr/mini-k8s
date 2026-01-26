@@ -1,6 +1,7 @@
 package web
 
 import (
+	"fmt"
 	"html/template"
 	"io"
 
@@ -12,8 +13,15 @@ type TemplateRenderer struct {
 }
 
 func NewRenderer() *TemplateRenderer {
+	tmpl := template.Must(template.New("").ParseGlob("views/*.html"))
+	tmpl = template.Must(tmpl.ParseGlob("views/**/*.html"))
+
+	for _, t := range tmpl.Templates() {
+		fmt.Println("Loaded template:", t.Name())
+	}
+
 	return &TemplateRenderer{
-		templates: template.Must(template.ParseGlob("views/*.html")),
+		templates: tmpl,
 	}
 }
 
