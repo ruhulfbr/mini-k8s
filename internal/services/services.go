@@ -17,18 +17,19 @@ func InitServices(
 	asynqClient *asynq.Client,
 ) (*Services, error) {
 	gitService := NewGitService()
+	clusterService := NewClusterService(
+		repos.ClusterRepository,
+		repos.ClusterBuildConfigRepository,
+		repos.ApplicationRepository,
+		repos.ClusterBuildRepository,
+		repos.PodRepository,
+		gitService, asynqClient,
+	)
 
 	sv := &Services{
-		ApplicationService: NewApplicationService(repos.ApplicationRepository, gitService),
-		ClusterService: NewClusterService(
-			repos.ClusterRepository,
-			repos.ClusterBuildConfigRepository,
-			repos.ApplicationRepository,
-			repos.ClusterBuildRepository,
-			repos.PodRepository,
-			gitService, asynqClient,
-		),
-		GitService: gitService,
+		ApplicationService: NewApplicationService(repos.ApplicationRepository, repos.ClusterRepository),
+		ClusterService:     clusterService,
+		GitService:         gitService,
 	}
 
 	return sv, nil

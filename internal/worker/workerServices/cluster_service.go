@@ -277,25 +277,29 @@ func (cs *ClusterService) EmitClusterEvent(
 	action events.ClusterEventAction,
 	metadata any,
 ) {
-	eventType := events.GetEventMessage(event, action)
+	message := events.GetEventMessage(event, action)
 	metaJSON := utils.NormalizeEventMetadata(metadata)
 
 	data := map[string]string{
 		"clusterId": strconv.FormatInt(clusterId, 10),
 		"event":     string(event),
 		"action":    string(action),
-		"message":   eventType,
+		"message":   message,
 	}
-
 	cs.pusher.TriggerClusterEvent(data)
+
 	if err := cs.eventRepo.LogEvent(&entities.ClusterEvent{
 		ClusterId: clusterId,
-		Type:      eventType,
+		Event:     string(event),
+		Action:    string(action),
+		Message:   message,
 		Metadata:  metaJSON,
 	}); err != nil {
 		logger.Error(ctx, "Failed to emit cluster event", err,
 			"clusterId", clusterId,
-			"eventType", eventType,
+			"event", string(event),
+			"action", string(action),
+			"message", message,
 		)
 	}
 }

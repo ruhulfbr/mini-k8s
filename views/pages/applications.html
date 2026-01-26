@@ -1,0 +1,116 @@
+{{ define "content" }}
+<div id="loader" class="text-center my-5">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+</div>
+
+<div class="accordion" id="accordionExample"></div>
+
+<script>
+    $(document).ready(function() {
+        const $accordion = $('#accordionExample');
+        const $loader = $('#loader');
+
+        // Show loader
+        $loader.show();
+        $accordion.hide();
+
+        $.ajax({
+            url: 'http://localhost:3000/api/applications',
+            method: 'GET',
+            success: function(res) {
+                $accordion.empty();
+
+                if (res.data && res.data.length > 0) {
+                    res.data.forEach((app, index) => {
+                        const isFirst = index === 0;
+                        const collapseId = `collapse${index + 1}`;
+                        const headingId = `heading${index + 1}`;
+
+                        // Generate clusters table rows
+                        let clustersHTML = '';
+                        if (app.clusters && app.clusters.length > 0) {
+                            app.clusters.forEach((cluster, i) => {
+                                const clusterStatus = cluster.status === 1
+                                    ? '<span class="badge bg-success">Active</span>'
+                                    : '<span class="badge bg-danger">Inactive</span>';
+
+                                clustersHTML += `
+                                <tr>
+                                    <td>${i + 1}</td>
+                                    <td>${cluster.name}</td>
+                                    <td>${cluster.type}</td>
+                                    <td>${clusterStatus}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-info openModal">
+                                            <i class="fa-solid fa-pen"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-danger">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>`;
+                            });
+                        } else {
+                            clustersHTML = `<tr><td colspan="5" class="text-center">No clusters found</td></tr>`;
+                        }
+
+                        const accordionItem = `
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="${headingId}">
+                            <button class="accordion-button ${isFirst ? '' : 'collapsed'}" type="button"
+                                data-bs-toggle="collapse" data-bs-target="#${collapseId}"
+                                aria-expanded="${isFirst}" aria-controls="${collapseId}">
+                                ${app.name}
+                            </button>
+                        </h2>
+                        <div id="${collapseId}" class="accordion-collapse collapse ${isFirst ? 'show' : ''}"
+                            aria-labelledby="${headingId}" data-bs-parent="#accordionExample">
+                            <div class="accordion-body">
+                                <div class="d-flex justify-content-between mb-3">
+                                    <div><h5>Clusters</h5></div>
+                                    <div>
+                                        <button class="btn btn-success btn-sm openModal">
+                                            <i class="fa-solid fa-plus"></i> Add New
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <table class="table table-bordered table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Name</th>
+                                            <th>Type</th>
+                                            <th>Status</th>
+                                            <th width="150">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${clustersHTML}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>`;
+
+                        $accordion.append(accordionItem);
+                    });
+                } else {
+                    $accordion.append('<div class="text-center p-3">No applications found.</div>');
+                }
+            },
+            error: function(err) {
+                $accordion.html('<div class="text-center text-danger p-3">Failed to load applications.</div>');
+            },
+            complete: function() {
+                $loader.hide();
+                $accordion.show();
+            }
+        });
+    });
+</script>
+
+
+{{ end }}
