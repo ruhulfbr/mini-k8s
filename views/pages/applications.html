@@ -7,8 +7,109 @@
 
 <div class="accordion" id="accordionExample"></div>
 
+<div class="modal fade" id="editClusterModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Cluster</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+
+                <!-- Deploy Mode -->
+                <div class="mb-3">
+                    <label class="form-label">Deploy Mode:</label><br>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="deployMode" id="deployModeImage" value="image">
+                        <label class="form-check-label" for="deployModeImage">Image</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="deployMode" id="deployModeBuild" value="build">
+                        <label class="form-check-label" for="deployModeBuild">Build</label>
+                    </div>
+                </div>
+
+                <!-- Image Field -->
+                <div id="imageFieldWrapper" class="mb-3">
+                    <label class="form-label">Image</label>
+                    <input type="text" id="imageField" class="form-control" placeholder="Enter image name">
+                </div>
+
+                <!-- JSON Editor Wrapper -->
+                <div id="buildJsonWrapper" style="height:400px; display:none;"></div>
+
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="beautifyJsonBtn">Beautify</button>
+                <button class="btn btn-primary" id="saveClusterBtn">Save</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="clusterDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title">Cluster Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                <table class="table table-bordered">
+                    <tbody id="clusterDetailsBody"></tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="buildsModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title">Build History</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                <!-- Loader -->
+                <div id="buildsLoader" class="text-center my-5">
+                    <div class="spinner-border text-primary"></div>
+                </div>
+
+                <!-- Table Wrapper -->
+                <div id="buildsTableWrapper" style="max-height: 450px; overflow-y: auto; display:none;">
+                    <table class="table table-bordered table-hover mb-0">
+                        <thead class="table-light sticky-top">
+                        <tr>
+                            <th>#</th>
+                            <th>Version</th>
+                            <th>Image Tag</th>
+                            <th>Deployed</th>
+                            <th>Created At</th>
+                        </tr>
+                        </thead>
+                        <tbody id="buildsTableBody"></tbody>
+                    </table>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
 <script>
-    $(document).ready(function() {
+    $(document).ready(function () {
         const $accordion = $('#accordionExample');
         const $loader = $('#loader');
 
@@ -19,7 +120,7 @@
         $.ajax({
             url: 'http://localhost:3000/api/applications',
             method: 'GET',
-            success: function(res) {
+            success: function (res) {
                 $accordion.empty();
 
                 if (res.data && res.data.length > 0) {
@@ -43,7 +144,18 @@
                                     <td>${cluster.type}</td>
                                     <td>${clusterStatus}</td>
                                     <td>
-                                        <button class="btn btn-sm btn-info openModal">
+                                        <button class="btn btn-sm btn-primary viewCluster"
+                                            data-cluster='${JSON.stringify(cluster)}'>
+                                            <i class="fa-solid fa-eye"></i>
+                                        </button>
+                                        <button
+                                            class="btn btn-sm btn-warning viewBuilds"
+                                            data-app-id="${app.id}"
+                                            data-cluster-id="${cluster.id}">
+                                            <i class="fa-solid fa-layer-group"></i>
+                                        </button>
+
+                                        <button class="btn btn-sm btn-info editCluster" data-cluster='${JSON.stringify(cluster)}'>
                                             <i class="fa-solid fa-pen"></i>
                                         </button>
                                         <button class="btn btn-sm btn-danger">
@@ -57,43 +169,43 @@
                         }
 
                         const accordionItem = `
-                    <div class="accordion-item">
-                        <h2 class="accordion-header" id="${headingId}">
-                            <button class="accordion-button ${isFirst ? '' : 'collapsed'}" type="button"
-                                data-bs-toggle="collapse" data-bs-target="#${collapseId}"
-                                aria-expanded="${isFirst}" aria-controls="${collapseId}">
-                                ${app.name}
-                            </button>
-                        </h2>
-                        <div id="${collapseId}" class="accordion-collapse collapse ${isFirst ? 'show' : ''}"
-                            aria-labelledby="${headingId}" data-bs-parent="#accordionExample">
-                            <div class="accordion-body">
-                                <div class="d-flex justify-content-between mb-3">
-                                    <div><h5>Clusters</h5></div>
-                                    <div>
-                                        <button class="btn btn-success btn-sm openModal">
-                                            <i class="fa-solid fa-plus"></i> Add New
-                                        </button>
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="${headingId}">
+                                    <button class="accordion-button ${isFirst ? '' : 'collapsed'}" type="button"
+                                        data-bs-toggle="collapse" data-bs-target="#${collapseId}"
+                                        aria-expanded="${isFirst}" aria-controls="${collapseId}">
+                                        ${app.name}
+                                    </button>
+                                </h2>
+                                <div id="${collapseId}" class="accordion-collapse collapse ${isFirst ? 'show' : ''}"
+                                    aria-labelledby="${headingId}" data-bs-parent="#accordionExample">
+                                    <div class="accordion-body">
+                                        <div class="d-flex justify-content-between mb-3">
+                                            <div><h5>Clusters</h5></div>
+                                            <div>
+                                                <button class="btn btn-success btn-sm openModal">
+                                                    <i class="fa-solid fa-plus"></i> Add New
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <table class="table table-bordered table-hover">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>#</th>
+                                                    <th>Name</th>
+                                                    <th>Type</th>
+                                                    <th>Status</th>
+                                                    <th width="150">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                ${clustersHTML}
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </div>
-
-                                <table class="table table-bordered table-hover">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>#</th>
-                                            <th>Name</th>
-                                            <th>Type</th>
-                                            <th>Status</th>
-                                            <th width="150">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${clustersHTML}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>`;
+                            </div>`;
 
                         $accordion.append(accordionItem);
                     });
@@ -101,14 +213,203 @@
                     $accordion.append('<div class="text-center p-3">No applications found.</div>');
                 }
             },
-            error: function(err) {
+            error: function (err) {
                 $accordion.html('<div class="text-center text-danger p-3">Failed to load applications.</div>');
             },
-            complete: function() {
+            complete: function () {
                 $loader.hide();
                 $accordion.show();
             }
         });
+
+        $(document).on('click', '.viewCluster', function () {
+            const cluster = $(this).data('cluster');
+            const $body = $('#clusterDetailsBody');
+
+            const statusBadge = cluster.status === 1
+                ? '<span class="badge bg-success">Active</span>'
+                : '<span class="badge bg-danger">Inactive</span>';
+
+            $body.html(`
+                <tr><th>Name</th><td>${cluster.name}</td></tr>
+                <tr><th>Type</th><td>${cluster.type}</td></tr>
+                <tr><th>IP</th><td>${cluster.ip}</td></tr>
+                <tr><th>Port</th><td>${cluster.port}</td></tr>
+                <tr><th>Path</th><td>${cluster.path}</td></tr>
+                <tr><th>Replicas</th><td>${cluster.replicas}</td></tr>
+                <tr><th>CPU</th><td>${cluster.cpu}</td></tr>
+                <tr><th>Memory</th><td>${cluster.memory} MB</td></tr>
+                <tr><th>Deploy Mode</th><td>${cluster.deploy_mode}</td></tr>
+                <tr><th>Image</th><td>${cluster.image ?? '-'}</td></tr>
+                <tr><th>Current Image Tag</th><td>${cluster.current_image_tag ?? '-'}</td></tr>
+                <tr><th>Version</th><td>${cluster.current_version ?? '-'}</td></tr>
+                <tr><th>Status</th><td>${statusBadge}</td></tr>
+                <tr><th>Last Deployed</th><td>${cluster.last_deployed_at ?? '-'}</td></tr>
+            `);
+
+            $('#clusterDetailsModal').modal('show');
+        });
+
+        $(document).on('click', '.viewBuilds', function () {
+            const appId = $(this).data('app-id');
+            const clusterId = $(this).data('cluster-id');
+
+            $('#buildsModal').modal('show');
+            $('#buildsLoader').show();
+            $('#buildsTableWrapper').hide();
+            $('#buildsTableBody').empty();
+
+            $.ajax({
+                url: `http://localhost:3000/api/applications/${appId}/clusters/${clusterId}/builds`,
+                method: 'GET',
+                success: function (res) {
+                    if (res.data && res.data.length > 0) {
+                        res.data.forEach((build, index) => {
+                            let deployedInfo;
+                            if (build.deployed_at) {
+                                deployedInfo = `
+                                    <small class="badge bg-success">Deployed</small><br>
+                                    <small class="text-muted">
+                                        ${new Date(build.deployed_at).toLocaleString()}
+                                    </small>
+                                `;
+                            } else {
+                                deployedInfo = `<span class="badge bg-secondary">Not Yet</span>`;
+                            }
+
+                            $('#buildsTableBody').append(`
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td>${build.version}</td>
+                            <td>${build.image_tag}</td>
+                            <td>${deployedInfo}</td>
+                            <td><small class="text-muted">${new Date(build.created_at).toLocaleString()}</small></td>
+                        </tr>
+                    `);
+                        });
+                    } else {
+                        $('#buildsTableBody').html(`
+                    <tr>
+                        <td colspan="5" class="text-center">No builds found</td>
+                    </tr>
+                `);
+                    }
+                },
+                error: function () {
+                    $('#buildsTableBody').html(`
+                <tr>
+                    <td colspan="5" class="text-center text-danger">
+                        Failed to load builds
+                    </td>
+                </tr>
+            `);
+                },
+                complete: function () {
+                    $('#buildsLoader').hide();
+                    $('#buildsTableWrapper').show();
+                }
+            });
+        });
+
+        let jsonEditor; // global for editor instance
+        let currentClusterId;
+
+// Open modal with cluster info
+        $(document).on('click', '.editCluster', function () {
+            const cluster = $(this).data('cluster');
+            currentClusterId = cluster.id;
+
+            // Set deploy mode radio
+            if (cluster.deploy_mode === 1 || cluster.deploy_mode === 'image') {
+                $('#deployModeImage').prop('checked', true);
+                $('#imageFieldWrapper').show();
+                $('#buildJsonWrapper').hide();
+                $('#imageField').val(cluster.image || '');
+            } else {
+                $('#deployModeBuild').prop('checked', true);
+                $('#imageFieldWrapper').hide();
+                $('#buildJsonWrapper').show();
+                initJsonEditor(cluster.build || {}); // initialize editor with build JSON
+            }
+
+            $('#editClusterModal').modal('show');
+        });
+
+// Handle deploy mode change
+        $('input[name="deployMode"]').change(function () {
+            const mode = $(this).val();
+            if (mode === 'image') {
+                $('#imageFieldWrapper').show();
+                $('#buildJsonWrapper').hide();
+            } else {
+                $('#imageFieldWrapper').hide();
+                $('#buildJsonWrapper').show();
+                if (!jsonEditor) initJsonEditor({}); // empty JSON if first time
+            }
+        });
+
+// Initialize JSONEditor
+        function initJsonEditor(data) {
+            const container = document.getElementById("buildJsonWrapper");
+            jsonEditor = new JSONEditor(container, {
+                mode: 'code',
+                onError: function (err) { alert(err.toString()); },
+                onModeChange: function (newMode, oldMode) { /* optional */ }
+            });
+            jsonEditor.set(data);
+        }
+
+// Beautify JSON button
+        $('#beautifyJsonBtn').click(function () {
+            if (jsonEditor) {
+                try {
+                    const json = jsonEditor.get();
+                    jsonEditor.set(json); // re-set to format nicely
+                } catch (e) {
+                    alert('Invalid JSON');
+                }
+            }
+        });
+
+// Save cluster
+        $('#saveClusterBtn').click(function () {
+            const deployMode = $('input[name="deployMode"]:checked').val();
+            let payload = { deploy_mode: deployMode };
+
+            if (deployMode === 'image') {
+                payload.image = $('#imageField').val();
+            } else if (deployMode === 'build') {
+                try {
+                    payload.build = jsonEditor.get();
+                } catch (e) {
+                    alert('Invalid JSON, cannot save');
+                    return;
+                }
+            }
+
+            console.log('Cluster ID:', currentClusterId);
+            console.log('Payload to save:', payload);
+
+            // Example AJAX call
+            /*
+            $.ajax({
+                url: `/api/clusters/${currentClusterId}`,
+                method: 'PUT',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: () => {
+                    alert('Cluster updated successfully');
+                    $('#editClusterModal').modal('hide');
+                    // optionally refresh cluster table
+                }
+            });
+            */
+        });
+
+
+
+
+
     });
 </script>
 
