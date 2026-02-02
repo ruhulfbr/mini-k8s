@@ -230,6 +230,8 @@
                 ? '<span class="badge bg-success">Active</span>'
                 : '<span class="badge bg-danger">Inactive</span>';
 
+            const deployMode = cluster.deployMode === 1 ? "Image": "Build"
+
             $body.html(`
                 <tr><th>Name</th><td>${cluster.name}</td></tr>
                 <tr><th>Type</th><td>${cluster.type}</td></tr>
@@ -239,12 +241,12 @@
                 <tr><th>Replicas</th><td>${cluster.replicas}</td></tr>
                 <tr><th>CPU</th><td>${cluster.cpu}</td></tr>
                 <tr><th>Memory</th><td>${cluster.memory} MB</td></tr>
-                <tr><th>Deploy Mode</th><td>${cluster.deploy_mode}</td></tr>
+                <tr><th>Deploy Mode</th><td>${deployMode}</td></tr>
                 <tr><th>Image</th><td>${cluster.image ?? '-'}</td></tr>
-                <tr><th>Current Image Tag</th><td>${cluster.current_image_tag ?? '-'}</td></tr>
-                <tr><th>Version</th><td>${cluster.current_version ?? '-'}</td></tr>
+                <tr><th>Current Image Tag</th><td>${cluster.currentImageTag ?? '-'}</td></tr>
+                <tr><th>Version</th><td>${cluster.currentVersion ?? '-'}</td></tr>
                 <tr><th>Status</th><td>${statusBadge}</td></tr>
-                <tr><th>Last Deployed</th><td>${cluster.last_deployed_at ?? '-'}</td></tr>
+                <tr><th>Last Deployed</th><td>${cluster.lastDeployedAt ?? '-'}</td></tr>
             `);
 
             $('#clusterDetailsModal').modal('show');
@@ -270,7 +272,7 @@
                                 deployedInfo = `
                                     <small class="badge bg-success">Deployed</small><br>
                                     <small class="text-muted">
-                                        ${new Date(build.deployed_at).toLocaleString()}
+                                        ${new Date(build.deployedAt).toLocaleString()}
                                     </small>
                                 `;
                             } else {
@@ -281,9 +283,9 @@
                         <tr>
                             <td>${index + 1}</td>
                             <td>${build.version}</td>
-                            <td>${build.image_tag}</td>
+                            <td>${build.imageTag}</td>
                             <td>${deployedInfo}</td>
-                            <td><small class="text-muted">${new Date(build.created_at).toLocaleString()}</small></td>
+                            <td><small class="text-muted">${new Date(build.createdAt).toLocaleString()}</small></td>
                         </tr>
                     `);
                         });
@@ -320,7 +322,7 @@
             currentClusterId = cluster.id;
 
             // Set deploy mode radio
-            if (cluster.deploy_mode === 1 || cluster.deploy_mode === 'image') {
+            if (cluster.deployMode === 1 || cluster.deployMode === 'image') {
                 $('#deployModeImage').prop('checked', true);
                 $('#imageFieldWrapper').show();
                 $('#buildJsonWrapper').hide();
@@ -405,9 +407,6 @@
             });
             */
         });
-
-
-
 
 
     });

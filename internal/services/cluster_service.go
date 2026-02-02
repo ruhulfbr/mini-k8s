@@ -100,6 +100,13 @@ func (s *ClusterService) Create(cluster *entities.Cluster, bCfg *entities.Cluste
 		if err := s.buildConfigRepo.Create(bCfg); err != nil {
 			return err
 		}
+
+		cluster.BuildConfig = &entities.BuildConfig{
+			GitRepo:           bCfg.GitRepo,
+			GitBranch:         bCfg.GitBranch,
+			DockerContextPath: bCfg.DockerContextPath,
+			DockerfileName:    bCfg.DockerfileName,
+		}
 	}
 
 	return nil
@@ -134,6 +141,13 @@ func (s *ClusterService) Update(cluster *entities.Cluster, bCfg *entities.Cluste
 		if err := s.updateBuildConfig(bCfg); err != nil {
 			logger.Error(nil, "Update build config error", err)
 			return err
+		}
+
+		cluster.BuildConfig = &entities.BuildConfig{
+			GitRepo:           bCfg.GitRepo,
+			GitBranch:         bCfg.GitBranch,
+			DockerContextPath: bCfg.DockerContextPath,
+			DockerfileName:    bCfg.DockerfileName,
 		}
 	}
 
