@@ -20,9 +20,16 @@ const (
 	DeployModeBuild       DeployMode    = 2
 )
 
+type BuildConfig struct {
+	GitRepo           string `json:"gitRepo"`
+	GitBranch         string `json:"gitBranch"`
+	DockerContextPath string `json:"dockerContextPath"`
+	DockerfileName    string `json:"dockerfileName"`
+}
+
 type Cluster struct {
 	Id              int64         `db:"id" json:"id"`
-	ApplicationId   int64         `db:"application_id" json:"application_id"`
+	ApplicationId   int64         `db:"application_id" json:"applicationId"`
 	Name            string        `db:"name" json:"name"`
 	IP              string        `db:"ip" json:"ip"`
 	Port            int           `db:"port" json:"port"`
@@ -31,15 +38,16 @@ type Cluster struct {
 	Memory          int           `db:"memory" json:"memory"`
 	Path            string        `db:"path" json:"path"`
 	Type            ClusterType   `db:"type" json:"type"`
-	DeployMode      DeployMode    `db:"deploy_mode" json:"deploy_mode"`
+	DeployMode      DeployMode    `db:"deploy_mode" json:"deployMode"`
+	BuildConfig     *BuildConfig  `json:"buildConfig,omitempty"`
 	Image           *string       `db:"image" json:"image"`
 	Envs            *string       `db:"envs" json:"envs"`
-	CurrentImageTag *string       `db:"current_image_tag" json:"current_image_tag"`
-	CurrentVersion  *string       `db:"current_version" json:"current_version"`
+	CurrentImageTag *string       `db:"current_image_tag" json:"currentImageTag"`
+	CurrentVersion  *string       `db:"current_version" json:"currentVersion"`
 	Status          ClusterStatus `db:"status" json:"status"`
-	LastDeployedAt  *time.Time    `db:"last_deployed_at" json:"last_deployed_at"`
-	CreatedAt       time.Time     `db:"created_at" json:"created_at"`
-	UpdatedAt       time.Time     `db:"updated_at" json:"updated_at"`
+	LastDeployedAt  *time.Time    `db:"last_deployed_at" json:"lastDeployedAt"`
+	CreatedAt       time.Time     `db:"created_at" json:"createdAt"`
+	UpdatedAt       time.Time     `db:"updated_at" json:"updatedAt"`
 }
 
 func ClusterFromRequest(appId int64, req *requests.CreateClusterRequest, clusterId ...int64) (*Cluster, error) {
