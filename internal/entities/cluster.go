@@ -29,7 +29,7 @@ type BuildConfig struct {
 
 type Cluster struct {
 	Id              int64         `db:"id" json:"id"`
-	ApplicationId   int64         `db:"application_id" json:"applicationId"`
+	ContextId       int64         `db:"context_id" json:"contextId"`
 	Name            string        `db:"name" json:"name"`
 	IP              string        `db:"ip" json:"ip"`
 	Port            int           `db:"port" json:"port"`
@@ -50,18 +50,18 @@ type Cluster struct {
 	UpdatedAt       time.Time     `db:"updated_at" json:"updatedAt"`
 }
 
-func ClusterFromRequest(appId int64, req *requests.CreateClusterRequest, clusterId ...int64) (*Cluster, error) {
+func ClusterFromRequest(ctxId int64, req *requests.CreateClusterRequest, clusterId ...int64) (*Cluster, error) {
 	cluster := &Cluster{
-		ApplicationId: appId,
-		Name:          req.Name,
-		IP:            req.IP,
-		Port:          req.Port,
-		Replicas:      req.Replicas,
-		CPU:           req.CPU,
-		Memory:        req.Memory,
-		Path:          req.Path,
-		Type:          ClusterType(req.Type),
-		DeployMode:    DeployMode(req.DeployMode),
+		ContextId: ctxId,
+		Name:      req.Name,
+		IP:        req.IP,
+		Port:      req.Port,
+		Replicas:  req.Replicas,
+		CPU:       req.CPU,
+		Memory:    req.Memory,
+		Path:      req.Path,
+		Type:      ClusterType(req.Type),
+		DeployMode: DeployMode(req.DeployMode),
 	}
 
 	if len(clusterId) > 0 {

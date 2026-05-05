@@ -32,22 +32,22 @@ func ConfigureRoutes(
 
 	engine.GET("/", func(c echo.Context) error {
 		return c.Render(http.StatusOK, "index.html", map[string]any{
-			"title":    "Applications",
+			"title":    "Contexts",
 			"pageName": "dashboard",
 		})
 	})
 
 	api := engine.Group("/api")
 
-	application := api.Group("/applications")
-	application.GET("", appHandlers.ApplicationHandler.List)
-	application.POST("", appHandlers.ApplicationHandler.Create)
-	application.GET("/:id", appHandlers.ApplicationHandler.Show)
-	application.PUT("/:id", appHandlers.ApplicationHandler.Update)
-	application.DELETE("/:id", appHandlers.ApplicationHandler.Delete)
+	context := api.Group("/contexts")
+	context.GET("", appHandlers.ContextHandler.List)
+	context.POST("", appHandlers.ContextHandler.Create)
+	context.GET("/:id", appHandlers.ContextHandler.Show)
+	context.PUT("/:id", appHandlers.ContextHandler.Update)
+	context.DELETE("/:id", appHandlers.ContextHandler.Delete)
 
-	cluster := api.Group("/applications/:appId/clusters")
-	cluster.GET("", appHandlers.ClusterHandler.ListByApplication)
+	cluster := api.Group("/contexts/:ctxId/clusters")
+	cluster.GET("", appHandlers.ClusterHandler.ListByContext)
 	cluster.POST("", appHandlers.ClusterHandler.Create)
 	cluster.GET("/:id", appHandlers.ClusterHandler.Show)
 	cluster.PUT("/:id", appHandlers.ClusterHandler.Update)

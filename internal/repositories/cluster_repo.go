@@ -14,7 +14,7 @@ type ClusterRepository struct {
 }
 
 type ClusterRepositoryInterface interface {
-	ListByApplication(appID int64, status *string) ([]entities.Cluster, error)
+	ListByContext(ctxID int64, clusterType *string) ([]entities.Cluster, error)
 	Create(cluster *entities.Cluster) error
 	Update(cluster *entities.Cluster) error
 	Delete(id int64) error
@@ -24,9 +24,9 @@ func NewClusterRepository(db *sqlx.DB) *ClusterRepository {
 	return &ClusterRepository{db: db}
 }
 
-func (r *ClusterRepository) ListByApplication(appId int64, clusterType *string) ([]entities.Cluster, error) {
-	query := `SELECT * FROM clusters WHERE application_id = ? order by id DESC`
-	args := []any{appId}
+func (r *ClusterRepository) ListByContext(ctxId int64, clusterType *string) ([]entities.Cluster, error) {
+	query := `SELECT * FROM clusters WHERE context_id = ? order by id DESC`
+	args := []any{ctxId}
 
 	if clusterType != nil {
 		query += " AND type = ?"
@@ -41,13 +41,13 @@ func (r *ClusterRepository) ListByApplication(appId int64, clusterType *string) 
 	return clusters, nil
 }
 
-func (r *ClusterRepository) GetByAppAndId(appId int64, id int64) (*entities.Cluster, error) {
+func (r *ClusterRepository) GetByContextAndId(ctxId int64, id int64) (*entities.Cluster, error) {
 	var s entities.Cluster
-	err := r.db.Get(&s, `SELECT * FROM clusters WHERE application_id = ? and id = ?`, appId, id)
+	err := r.db.Get(&s, `SELECT * FROM clusters WHERE context_id = ? and id = ?`, ctxId, id)
 
 	if err != nil {
 
-		fmt.Println("GetByAppAndId", err)
+		fmt.Println("GetByContextAndId", err)
 
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -72,9 +72,9 @@ func (r *ClusterRepository) GetById(id int64) (*entities.Cluster, error) {
 	return &s, err
 }
 
-func (r *ClusterRepository) IsExists(appId int64, id int64) bool {
+func (r *ClusterRepository) IsExists(ctxId int64, id int64) bool {
 	var a entities.Cluster
-	err := r.db.Get(&a, `SELECT id FROM clusters WHERE application_id = ? and id = ?`, appId, id)
+	err := r.db.Get(&a, `SELECT id FROM clusters WHERE context_id = ? and id = ?`, ctxId, id)
 
 	if errors.Is(err, sql.ErrNoRows) {
 		return false
@@ -83,9 +83,9 @@ func (r *ClusterRepository) IsExists(appId int64, id int64) bool {
 	return true
 }
 
-func (r *ClusterRepository) ExistsByName(appId int64, name string) bool {
+func (r *ClusterRepository) ExistsByName(ctxId int64, name string) bool {
 	var s entities.Cluster
-	err := r.db.Get(&s, `SELECT id FROM clusters WHERE application_id = ? and name = ?`, appId, name)
+	err := r.db.Get(&s, `SELECT id FROM clusters WHERE context_id = ? and name = ?`, ctxId, name)
 
 	if errors.Is(err, sql.ErrNoRows) {
 		return false
@@ -94,9 +94,9 @@ func (r *ClusterRepository) ExistsByName(appId int64, name string) bool {
 	return true
 }
 
-func (r *ClusterRepository) ExistsByNameExceptId(appId int64, name string, id int64) bool {
+func (r *ClusterRepository) ExistsByNameExceptId(ctxId int64, name string, id int64) bool {
 	var s entities.Cluster
-	err := r.db.Get(&s, `SELECT id FROM clusters WHERE application_id = ? and name = ? and id != ?`, appId, name, id)
+	err := r.db.Get(&s, `SELECT id FROM clusters WHERE context_id = ? and name = ? and id != ?`, ctxId, name, id)
 
 	if errors.Is(err, sql.ErrNoRows) {
 		return false
@@ -108,11 +108,11 @@ func (r *ClusterRepository) ExistsByNameExceptId(appId int64, name string, id in
 func (r *ClusterRepository) Create(s *entities.Cluster) error {
 	return r.db.QueryRow(`
 		INSERT INTO clusters (
-			application_id, name, ip, port,
+			context_id, name, ip, port,
 			replicas, cpu, memory, path, type, deploy_mode, image, envs
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		RETURNING id, status, created_at, updated_at`,
-		s.ApplicationId,
+		s.ContextId,
 		s.Name,
 		s.IP,
 		s.Port,

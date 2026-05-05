@@ -19,15 +19,15 @@ func NewClusterHandler(s *services.ClusterService) *ClusterHandler {
 	return &ClusterHandler{service: s}
 }
 
-func (h *ClusterHandler) ListByApplication(c echo.Context) error {
-	appId, _ := strconv.ParseInt(c.Param("appId"), 10, 64)
+func (h *ClusterHandler) ListByContext(c echo.Context) error {
+	ctxId, _ := strconv.ParseInt(c.Param("ctxId"), 10, 64)
 	typ := c.QueryParam("type")
 	var filter *string
 	if typ != "" {
 		filter = &typ
 	}
 
-	serviceList, err := h.service.ListByApplication(appId, filter)
+	serviceList, err := h.service.ListByContext(ctxId, filter)
 
 	if err != nil {
 		return err
@@ -37,10 +37,10 @@ func (h *ClusterHandler) ListByApplication(c echo.Context) error {
 }
 
 func (h *ClusterHandler) Show(c echo.Context) error {
-	appId, _ := strconv.ParseInt(c.Param("appId"), 10, 64)
+	ctxId, _ := strconv.ParseInt(c.Param("ctxId"), 10, 64)
 	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
-	service, err := h.service.GetByID(appId, id)
+	service, err := h.service.GetByID(ctxId, id)
 	if err != nil {
 		return err
 	}
@@ -49,7 +49,7 @@ func (h *ClusterHandler) Show(c echo.Context) error {
 }
 
 func (h *ClusterHandler) Create(c echo.Context) error {
-	appId, _ := strconv.ParseInt(c.Param("appId"), 10, 64)
+	ctxId, _ := strconv.ParseInt(c.Param("ctxId"), 10, 64)
 
 	req := new(requests.CreateClusterRequest)
 	if err := c.Bind(req); err != nil {
@@ -59,7 +59,7 @@ func (h *ClusterHandler) Create(c echo.Context) error {
 		return err
 	}
 
-	cl, err := entities.ClusterFromRequest(appId, req)
+	cl, err := entities.ClusterFromRequest(ctxId, req)
 	if err != nil {
 		return err
 	}
@@ -77,7 +77,7 @@ func (h *ClusterHandler) Create(c echo.Context) error {
 }
 
 func (h *ClusterHandler) Update(c echo.Context) error {
-	appId, _ := strconv.ParseInt(c.Param("appId"), 10, 64)
+	ctxId, _ := strconv.ParseInt(c.Param("ctxId"), 10, 64)
 	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
 	req := new(requests.UpdateClusterRequest)
@@ -88,7 +88,7 @@ func (h *ClusterHandler) Update(c echo.Context) error {
 		return err
 	}
 
-	cl, err := entities.ClusterFromRequest(appId, req, id)
+	cl, err := entities.ClusterFromRequest(ctxId, req, id)
 	if err != nil {
 		return err
 	}
@@ -105,10 +105,10 @@ func (h *ClusterHandler) Update(c echo.Context) error {
 }
 
 func (h *ClusterHandler) Delete(c echo.Context) error {
-	appId, _ := strconv.ParseInt(c.Param("appId"), 10, 64)
+	ctxId, _ := strconv.ParseInt(c.Param("ctxId"), 10, 64)
 	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
-	err := h.service.Delete(appId, id)
+	err := h.service.Delete(ctxId, id)
 
 	if err != nil {
 		return err
@@ -118,10 +118,10 @@ func (h *ClusterHandler) Delete(c echo.Context) error {
 }
 
 func (h *ClusterHandler) BuildHistory(c echo.Context) error {
-	appId, _ := strconv.ParseInt(c.Param("appId"), 10, 64)
+	ctxId, _ := strconv.ParseInt(c.Param("ctxId"), 10, 64)
 	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
-	buildHistories, err := h.service.GetBuildHistory(appId, id)
+	buildHistories, err := h.service.GetBuildHistory(ctxId, id)
 
 	if err != nil {
 		return err
@@ -131,7 +131,7 @@ func (h *ClusterHandler) BuildHistory(c echo.Context) error {
 }
 
 func (h *ClusterHandler) BuildImage(c echo.Context) error {
-	appId, _ := strconv.ParseInt(c.Param("appId"), 10, 64)
+	ctxId, _ := strconv.ParseInt(c.Param("ctxId"), 10, 64)
 	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
 	req := new(requests.DockerImageBuildRequest)
@@ -142,7 +142,7 @@ func (h *ClusterHandler) BuildImage(c echo.Context) error {
 		return err
 	}
 
-	err := h.service.BuildDockerImage(appId, id, req.Version)
+	err := h.service.BuildDockerImage(ctxId, id, req.Version)
 	if err != nil {
 		return err
 	}
@@ -151,7 +151,7 @@ func (h *ClusterHandler) BuildImage(c echo.Context) error {
 }
 
 func (h *ClusterHandler) PullImage(c echo.Context) error {
-	appId, _ := strconv.ParseInt(c.Param("appId"), 10, 64)
+	ctxId, _ := strconv.ParseInt(c.Param("ctxId"), 10, 64)
 	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
 	req := new(requests.DockerImagePullRequest)
@@ -162,7 +162,7 @@ func (h *ClusterHandler) PullImage(c echo.Context) error {
 		return err
 	}
 
-	err := h.service.PullDockerImage(appId, id, req.Version)
+	err := h.service.PullDockerImage(ctxId, id, req.Version)
 	if err != nil {
 		return err
 	}

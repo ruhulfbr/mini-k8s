@@ -5,7 +5,7 @@ import (
 )
 
 type Repositories struct {
-	ApplicationRepository        *ApplicationRepository
+	ContextRepository            *ContextRepository
 	ClusterRepository            *ClusterRepository
 	ClusterBuildConfigRepository *ClusterBuildConfigRepository
 	ClusterBuildRepository       *ClusterBuildRepository
@@ -15,7 +15,7 @@ type Repositories struct {
 
 func InitRepositories(DB *sqlx.DB) *Repositories {
 	return &Repositories{
-		ApplicationRepository:        NewApplicationRepository(DB),
+		ContextRepository:            NewContextRepository(DB),
 		ClusterRepository:            NewClusterRepository(DB),
 		ClusterBuildConfigRepository: NewClusterBuildConfigRepository(DB),
 		ClusterBuildRepository:       NewClusterBuildRepository(DB),

@@ -6,10 +6,10 @@ import (
 )
 
 type Services struct {
-	ApplicationService *ApplicationService
-	ClusterService     *ClusterService
-	GitService         *GitService
-	DockerService      *DockerService
+	ContextService *ContextService
+	ClusterService *ClusterService
+	GitService     *GitService
+	DockerService  *DockerService
 }
 
 func InitServices(
@@ -20,16 +20,16 @@ func InitServices(
 	clusterService := NewClusterService(
 		repos.ClusterRepository,
 		repos.ClusterBuildConfigRepository,
-		repos.ApplicationRepository,
+		repos.ContextRepository,
 		repos.ClusterBuildRepository,
 		repos.PodRepository,
 		gitService, asynqClient,
 	)
 
 	sv := &Services{
-		ApplicationService: NewApplicationService(repos.ApplicationRepository, repos.ClusterRepository),
-		ClusterService:     clusterService,
-		GitService:         gitService,
+		ContextService: NewContextService(repos.ContextRepository, repos.ClusterRepository),
+		ClusterService: clusterService,
+		GitService:     gitService,
 	}
 
 	return sv, nil

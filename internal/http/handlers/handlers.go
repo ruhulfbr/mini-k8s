@@ -8,8 +8,8 @@ import (
 )
 
 type Handlers struct {
-	ApplicationHandler *ApplicationHandler
-	ClusterHandler     *ClusterHandler
+	ContextHandler *ContextHandler
+	ClusterHandler *ClusterHandler
 }
 
 func InitHandlers(
@@ -21,7 +21,7 @@ func InitHandlers(
 	appServices, _ := services.InitServices(repos, asynqClient)
 
 	return &Handlers{
-		ApplicationHandler: NewApplicationHandler(appServices.ApplicationService),
-		ClusterHandler:     NewClusterHandler(appServices.ClusterService),
+		ContextHandler: NewContextHandler(appServices.ContextService),
+		ClusterHandler: NewClusterHandler(appServices.ClusterService),
 	}
 }

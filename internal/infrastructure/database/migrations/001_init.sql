@@ -1,4 +1,17 @@
 -- =====================================================
+-- CONTEXTS TABLE
+-- Stores context metadata
+-- =====================================================
+CREATE TABLE IF NOT EXISTS contexts
+(
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    name        TEXT    NOT NULL UNIQUE,
+    description TEXT             DEFAULT NULL,
+    created_at  DATETIME         DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME         DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =====================================================
 -- APPLICATIONS TABLE
 -- Stores high-level application metadata
 -- =====================================================
@@ -19,7 +32,7 @@ CREATE TABLE IF NOT EXISTS applications
 CREATE TABLE IF NOT EXISTS clusters
 (
     id                INTEGER PRIMARY KEY AUTOINCREMENT,
-    application_id    INTEGER NOT NULL,                -- FK to applications
+    context_id        INTEGER NOT NULL,                -- FK to contexts
     name              TEXT    NOT NULL,                -- Cluster name
     ip                TEXT    NOT NULL,                -- Cluster IP
     port              INTEGER NULL,                    -- Exposed port
@@ -38,11 +51,11 @@ CREATE TABLE IF NOT EXISTS clusters
     created_at        DATETIME         DEFAULT CURRENT_TIMESTAMP,
     updated_at        DATETIME         DEFAULT CURRENT_TIMESTAMP,
 
-    FOREIGN KEY (application_id) REFERENCES applications (id)
+    FOREIGN KEY (context_id) REFERENCES contexts (id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_clusters_application_id
-    ON clusters (application_id);
+CREATE INDEX IF NOT EXISTS idx_clusters_context_id
+    ON clusters (context_id);
 CREATE INDEX IF NOT EXISTS idx_clusters_type
     ON clusters (type);
 CREATE INDEX IF NOT EXISTS idx_clusters_status

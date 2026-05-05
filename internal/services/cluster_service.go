@@ -14,7 +14,7 @@ import (
 
 type ClusterService struct {
 	clusterRepo     *repositories.ClusterRepository
-	applicationRepo *repositories.ApplicationRepository
+	contextRepo     *repositories.ContextRepository
 	buildConfigRepo *repositories.ClusterBuildConfigRepository
 	buildRepo       *repositories.ClusterBuildRepository
 	podRepo         *repositories.PodRepository
@@ -25,7 +25,7 @@ type ClusterService struct {
 func NewClusterService(
 	clusterRepo *repositories.ClusterRepository,
 	buildConfigRepo *repositories.ClusterBuildConfigRepository,
-	applicationRepo *repositories.ApplicationRepository,
+	contextRepo *repositories.ContextRepository,
 	buildRepo *repositories.ClusterBuildRepository,
 	podRepo *repositories.PodRepository,
 	gitService *GitService,
@@ -34,7 +34,7 @@ func NewClusterService(
 	return &ClusterService{
 		clusterRepo:     clusterRepo,
 		buildConfigRepo: buildConfigRepo,
-		applicationRepo: applicationRepo,
+		contextRepo:     contextRepo,
 		buildRepo:       buildRepo,
 		podRepo:         podRepo,
 		gitService:      gitService,
@@ -42,21 +42,21 @@ func NewClusterService(
 	}
 }
 
-func (s *ClusterService) ListByApplication(appId int64, clusterType *string) ([]entities.Cluster, error) {
-	if s.applicationRepo.ExistsById(appId) == false {
-		return nil, appErrors.NoApplicationFound
+func (s *ClusterService) ListByContext(ctxId int64, clusterType *string) ([]entities.Cluster, error) {
+	if s.contextRepo.ExistsById(ctxId) == false {
+		return nil, appErrors.NoContextFound
 	}
 
-	return s.clusterRepo.ListByApplication(appId, clusterType)
+	return s.clusterRepo.ListByContext(ctxId, clusterType)
 }
 
-func (s *ClusterService) GetByID(appId int64, id int64) (*entities.Cluster, error) {
-	application, err := s.applicationRepo.GetByID(appId)
-	if err != nil || application == nil {
-		return nil, appErrors.NoApplicationFound
+func (s *ClusterService) GetByID(ctxId int64, id int64) (*entities.Cluster, error) {
+	context, err := s.contextRepo.GetByID(ctxId)
+	if err != nil || context == nil {
+		return nil, appErrors.NoContextFound
 	}
 
-	cluster, err := s.clusterRepo.GetByAppAndId(appId, id)
+	cluster, err := s.clusterRepo.GetByContextAndId(ctxId, id)
 	if err != nil {
 		return nil, err
 	}
@@ -75,12 +75,12 @@ func (s *ClusterService) Create(cluster *entities.Cluster, bCfg *entities.Cluste
 		}
 	}
 
-	application, err := s.applicationRepo.GetByID(cluster.ApplicationId)
-	if err != nil || application == nil {
-		return appErrors.NoApplicationFound
+	context, err := s.contextRepo.GetByID(cluster.ContextId)
+	if err != nil || context == nil {
+		return appErrors.NoContextFound
 	}
 
-	if s.clusterRepo.ExistsByName(cluster.ApplicationId, cluster.Name) {
+	if s.clusterRepo.ExistsByName(cluster.ContextId, cluster.Name) {
 		return appErrors.ClusterAlreadyExist
 	}
 
@@ -119,17 +119,17 @@ func (s *ClusterService) Update(cluster *entities.Cluster, bCfg *entities.Cluste
 		}
 	}
 
-	application, err := s.applicationRepo.GetByID(cluster.ApplicationId)
-	if err != nil || application == nil {
-		return appErrors.NoApplicationFound
+	context, err := s.contextRepo.GetByID(cluster.ContextId)
+	if err != nil || context == nil {
+		return appErrors.NoContextFound
 	}
 
-	existing, err := s.clusterRepo.GetByAppAndId(cluster.ApplicationId, cluster.Id)
+	existing, err := s.clusterRepo.GetByContextAndId(cluster.ContextId, cluster.Id)
 	if err != nil || existing == nil {
 		return appErrors.NoClusterFound
 	}
 
-	if s.clusterRepo.ExistsByNameExceptId(cluster.ApplicationId, cluster.Name, cluster.Id) {
+	if s.clusterRepo.ExistsByNameExceptId(cluster.ContextId, cluster.Name, cluster.Id) {
 		return appErrors.ClusterAlreadyExist
 	}
 
@@ -161,8 +161,8 @@ func (s *ClusterService) Update(cluster *entities.Cluster, bCfg *entities.Cluste
 	return nil
 }
 
-func (s *ClusterService) Delete(appId int64, id int64) error {
-	_, err := s.GetByID(appId, id)
+func (s *ClusterService) Delete(ctxId int64, id int64) error {
+	_, err := s.GetByID(ctxId, id)
 	if err != nil {
 		return err
 	}
@@ -180,8 +180,8 @@ func (s *ClusterService) Delete(appId int64, id int64) error {
 	return nil
 }
 
-func (s *ClusterService) GetBuildHistory(appId int64, id int64) ([]entities.ClusterBuild, error) {
-	_, err := s.GetByID(appId, id)
+func (s *ClusterService) GetBuildHistory(ctxId int64, id int64) ([]entities.ClusterBuild, error) {
+	_, err := s.GetByID(ctxId, id)
 	if err != nil {
 		return nil, err
 	}
@@ -194,12 +194,12 @@ func (s *ClusterService) BuildDockerImage(appId int64, clusterId int64, version 
 		return err
 	}
 
-	application, err := s.applicationRepo.GetByID(appId)
-	if err != nil || application == nil {
-		return appErrors.NoApplicationFound
+	context, err := s.contextRepo.GetByID(appId)
+	if err != nil || context == nil {
+		return appErrors.NoContextFound
 	}
 
-	cluster, err := s.clusterRepo.GetByAppAndId(appId, clusterId)
+	cluster, err := s.clusterRepo.GetByContextAndId(appId, clusterId)
 	if err != nil || cluster == nil {
 		return appErrors.NoClusterFound
 	}
@@ -220,7 +220,7 @@ func (s *ClusterService) BuildDockerImage(appId int64, clusterId int64, version 
 	ctx := context.Background()
 	task := tasks.BuildDockerImageTask(&tasks.BuildDockerImagePayload{
 		ApplicationId:   appId,
-		ApplicationName: application.Name,
+		ApplicationName: context.Name,
 		ClusterId:       cluster.Id,
 		ClusterName:     cluster.Name,
 		Version:         version,
@@ -243,12 +243,12 @@ func (s *ClusterService) PullDockerImage(appId int64, clusterId int64, version s
 		return err
 	}
 
-	application, err := s.applicationRepo.GetByID(appId)
-	if err != nil || application == nil {
-		return appErrors.NoApplicationFound
+	context, err := s.contextRepo.GetByID(appId)
+	if err != nil || context == nil {
+		return appErrors.NoContextFound
 	}
 
-	cluster, err := s.clusterRepo.GetByAppAndId(appId, clusterId)
+	cluster, err := s.clusterRepo.GetByContextAndId(appId, clusterId)
 	if err != nil || cluster == nil {
 		return appErrors.NoClusterFound
 	}
@@ -263,7 +263,7 @@ func (s *ClusterService) PullDockerImage(appId int64, clusterId int64, version s
 
 	ctx := context.Background()
 	task := tasks.PullDockerImageTask(&tasks.PullDockerImagePayload{
-		ApplicationName: application.Name,
+		ApplicationName: context.Name,
 		Cluster:         *cluster,
 		Version:         version,
 	})
@@ -292,7 +292,7 @@ func (s *ClusterService) Deploy(clusterId int64) error {
 	})
 	if _, err := s.asynqClient.EnqueueContext(ctx, task); err != nil {
 		logger.Error(ctx, "Enqueue deploy cluster task error", err,
-			"ApplicationId", cluster.ApplicationId,
+			"ContextId", cluster.ContextId,
 			"ClusterId", clusterId,
 			"Replicas", cluster.Replicas,
 		)
@@ -315,7 +315,7 @@ func (s *ClusterService) RollingDeploy(clusterId int64) error {
 	})
 	if _, err := s.asynqClient.EnqueueContext(ctx, task); err != nil {
 		logger.Error(ctx, "Enqueue rolling deploy cluster task error", err,
-			"ApplicationId", cluster.ApplicationId,
+			"ContextId", cluster.ContextId,
 			"ClusterId", clusterId,
 			"Replicas", cluster.Replicas,
 		)
@@ -339,7 +339,7 @@ func (s *ClusterService) HandleScale(clusterId int64, replicas int) error {
 	})
 	if _, err := s.asynqClient.EnqueueContext(ctx, task); err != nil {
 		logger.Error(ctx, "Enqueue Scale cluster task error", err,
-			"ApplicationId", cluster.ApplicationId,
+			"ContextId", cluster.ContextId,
 			"ClusterId", clusterId,
 			"Replicas", cluster.Replicas,
 		)
